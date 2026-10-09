@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Teoria — Princípios e Fórmulas | Física 3D</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+.teo{display:flex;flex-direction:column;gap:10px;padding:20px}
+.teo h2{font-size:17px;display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.teo h2 .ic{width:20px;height:20px;padding:9px;box-sizing:content-box;border-radius:11px;background:linear-gradient(135deg,rgba(77,163,255,.3),rgba(56,224,192,.18));border:1px solid var(--line2)}
+.teo ul{margin:6px 0 6px 18px;font-size:13px;color:var(--dim);line-height:1.7}
+.teo ul b{color:var(--txt)}
+.teo .formula{margin-top:8px}
+.teo .lim{font-size:12px;color:var(--warn);margin-top:8px}
+.teo .open{margin-top:10px}
+</style>
+</head>
+<body>
+<div id="top" class="glass">
+  <span class="logo">FÍSICA·3D — LABORATÓRIO VIRTUAL</span>
+  <nav><a class="tb" href="../index.html">Hub</a><a class="tb" href="../modulos/eletrostatica/index.html">Coulomb</a><a class="tb" href="../modulos/eletromagnetismo/index.html">Magnetismo</a><a class="tb" href="../modulos/fisica-moderna/index.html">Moderna</a><a class="tb" href="../modulos/eletrodinamica/index.html">Circuitos</a><a class="tb" href="../modulos/termodinamica/index.html">Gases</a><a class="tb" href="../modulos/livre/index.html">Livre</a><span class="tb act"><i data-lucide="book-open" class="ic"></i> Teoria</span></nav>
+</div>
+<main class="hub">
+  <section class="hero glass">
+    <h1>Princípios, teorias e fórmulas</h1>
+    <p>A base científica de cada laboratório: o que cada módulo assume, quais equações ele resolve de verdade e onde os modelos deixam de valer. Tudo aqui corresponde ao que a simulação calcula — sem texto decorativo.</p>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="zap" class="ic"></i> Eletrostática — cargas em repouso</h2>
+    <ul>
+      <li><b>Princípio:</b> cargas puntiformes no vácuo interagem pela <b>Lei de Coulomb</b>; o campo total é a <b>superposição vetorial</b> dos campos de cada carga.</li>
+      <li><b>Linhas de campo</b> partem de cargas + e chegam em − (padrão de dipolo); <b>equipotenciais</b> são perpendiculares a elas.</li>
+    </ul>
+    <div class="formula"><div id="tC1"></div></div>
+    <div class="formula"><div id="tC2"></div></div>
+    <div class="lim">Limites: r ≥ 0,05 m (F ∝ 1/r² diverge); meio diferente do vácuo exige outra permissividade.</div>
+    <div class="open"><a class="tb" href="../modulos/eletrostatica/index.html">Abrir laboratório</a></div>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="magnet" class="ic"></i> Eletromagnetismo — correntes, ímãs e indução</h2>
+    <ul>
+      <li><b>Princípio:</b> corrente gera campo (fio longo: <b>B=μ₀I/2πr</b>); campo exerce <b>força de Lorentz F=q(v×B)</b>; fluxo variável induz fem (<b>Faraday/Lenz</b>).</li>
+      <li><b>Indução só existe com variação de fluxo</b> — ímã parado não induz corrente.</li>
+    </ul>
+    <div class="formula"><div id="tM1"></div></div>
+    <div class="formula"><div id="tM2"></div></div>
+    <div class="lim">Limites: fio longo (longe das pontas); Φ=BAcosθ vale p/ B uniforme e superfície plana; trajetória em câmera lenta didática.</div>
+    <div class="open"><a class="tb" href="../modulos/eletromagnetismo/index.html">Abrir laboratório</a></div>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="atom" class="ic"></i> Física Moderna — fótons, átomos e núcleos</h2>
+    <ul>
+      <li><b>Princípio:</b> luz em pacotes <b>E=hf</b>; <b>fotoelétrico</b> só emite se hf&gt;φ; átomo de Bohr com níveis Eₙ; núcleos decaem exponencialmente.</li>
+      <li><b>Bohr é didático</b> — não representa orbitais quânticos reais.</li>
+    </ul>
+    <div class="formula"><div id="tF1"></div></div>
+    <div class="formula"><div id="tF2"></div></div>
+    <div class="lim">Limites: Bohr só p/ hidrogenoides; fotoelétrico ignora estrutura de bandas real.</div>
+    <div class="open"><a class="tb" href="../modulos/fisica-moderna/index.html">Abrir laboratório</a></div>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="circuit-board" class="ic"></i> Eletrodinâmica — circuitos de verdade</h2>
+    <ul>
+      <li><b>Princípio:</b> a <b>topologia dos fios</b> define o cálculo (série/paralelo por redução); <b>Ohm U=RI</b>, <b>potência P=UI</b>; capacitor carrega em <b>transitório RC</b>.</li>
+      <li><b>Sem caminho entre + e −, I=0;</b> fio direto sem resistor = curto.</li>
+    </ul>
+    <div class="formula"><div id="tE1"></div></div>
+    <div class="formula"><div id="tE2"></div></div>
+    <div class="lim">Limites: resistores ôhmicos, fios/fonte ideais; malhas mistas arbitrárias ainda não suportadas.</div>
+    <div class="open"><a class="tb" href="../modulos/eletrodinamica/index.html">Abrir laboratório</a></div>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="thermometer" class="ic"></i> Termodinâmica — gases e energia</h2>
+    <ul>
+      <li><b>Princípio:</b> gás ideal <b>PV=nRT</b>; <b>1ª lei ΔU=Q−W</b> (W pelo gás); U=3nRT/2 (monoatômico); <b>Carnot η=1−Tc/Th</b> é o teto teórico.</li>
+      <li><b>Adiabática reversível:</b> PV^γ=const, γ=5/3 — sem troca de calor.</li>
+    </ul>
+    <div class="formula"><div id="tT1"></div></div>
+    <div class="formula"><div id="tT2"></div></div>
+    <div class="lim">Limites: gás ideal, processos quase-estáticos; partículas 3D são amostra ilustrativa, não 10²³ moléculas.</div>
+    <div class="open"><a class="tb" href="../modulos/termodinamica/index.html">Abrir laboratório</a></div>
+  </section>
+
+  <section class="glass teo">
+    <h2><i data-lucide="flask-conical" class="ic"></i> Modo livre e método de estudo</h2>
+    <ul>
+      <li><b>Método:</b> chute o resultado → mexa 1 variável → confira o passo a passo → registre a medição.</li>
+      <li>Salve configs em JSON, compare A×B e exporte medições em CSV no <a href="../modulos/livre/index.html">Modo Livre</a>.</li>
+      <li>Mapa de estudos p/ o PAS/UnB em <b>docs/PAS-UNB.md</b>; fontes por fórmula em <b>docs/REFERENCIAS.md</b>.</li>
+    </ul>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>
+katex.render("F = k\\dfrac{|q_1 q_2|}{r^2},\\quad V = k\\dfrac{Q}{r},\\quad U = k\\dfrac{q_1 q_2}{r}", document.getElementById('tC1'));
+katex.render("\\vec{E} = \\sum_i kQ_i\\dfrac{\\vec{r}}{|\\vec{r}|^3}", document.getElementById('tC2'));
+katex.render("B = \\dfrac{\\mu_0 I}{2\\pi r},\\quad \\vec{F} = q(\\vec{v}\\times\\vec{B}),\\quad \\Phi = BA\\cos\\theta", document.getElementById('tM1'));
+katex.render("\\varepsilon = -N\\dfrac{\\Delta\\Phi}{\\Delta t}\\quad\\text{(Lenz: opõe-se à variação)}", document.getElementById('tM2'));
+katex.render("E = hf,\\quad K_{max} = hf - \\varphi,\\quad \\lambda = \\dfrac{h}{p}", document.getElementById('tF1'));
+katex.render("N(t) = N_0 e^{-\\lambda t},\\quad t_{1/2} = \\dfrac{\\ln 2}{\\lambda},\\quad E = mc^2", document.getElementById('tF2'));
+katex.render("U = RI,\\quad P = UI,\\quad R_{s} = R_1+R_2,\\quad \\dfrac{1}{R_{p}} = \\dfrac{1}{R_1}+\\dfrac{1}{R_2}", document.getElementById('tE1'));
+katex.render("Q = CV_C,\\quad V_C(t) = U(1-e^{-t/RC}),\\quad I_C = \\dfrac{U-V_C}{R}", document.getElementById('tE2'));
+katex.render("PV = nRT,\\quad \\Delta U = Q - W,\\quad W_{isob} = P\\Delta V", document.getElementById('tT1'));
+katex.render("U = \\dfrac{3}{2}nRT,\\quad PV^{\\gamma} = cte,\\quad \\eta_{Carnot} = 1-\\dfrac{T_c}{T_h}", document.getElementById('tT2'));
+if(window.lucide)lucide.createIcons();
+</script>
+</body>
+</html>
