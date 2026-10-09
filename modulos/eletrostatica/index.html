@@ -5,48 +5,55 @@
 <title>Eletrostática 3D — Coulomb</title>
 <link rel="stylesheet" href="../../css/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="c" class="webgl"></canvas>
-<div id="top" class="glass"><span class="logo">⚡ ELETROSTÁTICA · MVP</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="zap" class="ic"></i> ELETROSTÁTICA</span>
 <nav><a class="tb" href="../../index.html">Hub</a><span class="tb act">Coulomb</span>
 <a class="tb" href="../eletromagnetismo/index.html">Magnetismo</a><a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
-  <h3>Peças (arraste no 3D)</h3>
-  <div class="kv"><span>● q₁ (esfera)</span><b id="lQ1">+5 µC</b></div>
-  <div class="kv"><span>● q₂ (esfera)</span><b id="lQ2">−5 µC</b></div>
-  <div class="kv"><span>● prova (pequena)</span><b>opcional</b></div>
-  <button class="btn" id="bSwap">Inverter sinais</button>
-  <button class="btn" id="bEq">Cargas iguais +5/+5</button>
-  <div class="warn">Arraste as esferas com o mouse. Órbita: arrastar no fundo · zoom: scroll.</div>
+  <h3>Biblioteca (clique p/ adicionar)</h3>
+  <div class="row"><button class="btn" id="bAddPos"><i data-lucide="plus" class="ic"></i> + positiva</button>
+  <button class="btn" id="bAddNeg"><i data-lucide="minus" class="ic"></i> − negativa</button></div>
+  <div class="row"><button class="btn" id="bPreset"><i data-lucide="flask-conical" class="ic"></i> Teste 0,599 N</button>
+  <button class="btn" id="bClear"><i data-lucide="trash-2" class="ic"></i> Limpar</button></div>
+  <h3>Cargas (<span id="nQ">0</span>) — clique na lista ou no 3D</h3>
+  <div id="chargeList" style="display:flex;flex-direction:column;gap:5px"></div>
+  <label class="ctl"><input type="checkbox" id="cRes" style="width:auto" checked/> setas de força resultante</label>
+  <label class="ctl"><input type="checkbox" id="cField" style="width:auto" checked/> linhas de campo</label>
+  <label class="ctl"><input type="checkbox" id="cProva" style="width:auto" checked/> carga de prova (E, V)</label>
+  <div class="warn"><i data-lucide="move-3d" class="ic"></i> Arraste esferas no 3D. Fundo: órbita · scroll: zoom.</div>
 </aside>
 <aside id="right" class="glass">
-  <h3>Propriedades</h3>
-  <label class="ctl">q₁ (µC) <output id="oQ1">+5</output><input type="range" id="sQ1" min="-20" max="20" step="0.5" value="5"/></label>
-  <label class="ctl">q₂ (µC) <output id="oQ2">−5</output><input type="range" id="sQ2" min="-20" max="20" step="0.5" value="-5"/></label>
-  <label class="ctl">distância r (m) <output id="oR">2.0</output><input type="range" id="sR" min="0.2" max="8" step="0.05" value="2"/></label>
-  <label class="ctl"><input type="checkbox" id="cProva" style="width:auto"/> mostrar carga de prova (+1 nC) no ponto médio</label>
+  <h3>Selecionada: <span id="selName">—</span></h3>
+  <label class="ctl">carga q (µC) <output id="oQ">—</output><input type="range" id="sQ" min="-20" max="20" step="0.5" value="2"/></label>
+  <div class="row"><label class="ctl">x (m)<input type="number" id="nX" step="0.05" value="0"/></label>
+  <label class="ctl">z (m)<input type="number" id="nZ" step="0.05" value="0"/></label></div>
+  <div class="row"><button class="btn" id="bDup"><i data-lucide="copy" class="ic"></i> Duplicar</button>
+  <button class="btn" id="bDel"><i data-lucide="trash-2" class="ic"></i> Excluir</button></div>
   <h3>Fórmulas (KaTeX + passo a passo)</h3>
   <div class="formula"><div id="kCoulomb"></div><div class="step" id="stepF"></div></div>
   <div class="formula"><div id="kCampo"></div><div class="step" id="stepE"></div></div>
   <div class="formula"><div id="kPot"></div><div class="step" id="stepV"></div></div>
+  <h3>Pares com a selecionada</h3>
+  <div id="pairTable" style="font-size:12px"></div>
   <h3>Resultados SI</h3>
-  <div class="kv"><span>Força F</span><b id="rF">—</b></div>
-  <div class="kv"><span>Natureza</span><b id="rNat">—</b></div>
-  <div class="kv"><span>E no ponto médio</span><b id="rE">—</b></div>
-  <div class="kv"><span>V total no ponto médio</span><b id="rV">—</b></div>
-  <div class="kv"><span>U do sistema</span><b id="rU">—</b></div>
-  <div class="kv"><span>W=−ΔU (desde reset)</span><b id="rW">—</b></div>
-  <div class="row"><button class="btn" id="bReset">Resetar U₀</button><button class="btn primary" id="bSave">Salvar</button></div>
+  <div class="kv"><span>Resultante na selecionada</span><b id="rF">—</b></div>
+  <div class="kv"><span>E na prova (superposição)</span><b id="rE">—</b></div>
+  <div class="kv"><span>V na prova (soma)</span><b id="rV">—</b></div>
+  <div class="kv"><span>U total do sistema</span><b id="rU">—</b></div>
+  <div class="row"><button class="btn primary" id="bSave"><i data-lucide="save" class="ic"></i> Salvar</button></div>
   <div id="alert"></div>
 </aside>
-<div id="bottom" class="glass"><h3>Gráfico F × r — cai com 1/r²</h3><canvas id="g" width="820" height="130"></canvas></div>
-<div id="hud">Coulomb validado contra University Physics Vol.2 · r clamp ≥ 0,2 m</div>
+<div id="bottom" class="glass"><h3>Gráfico F × r — par (selecionada × vizinha mais próxima)</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="hud">Superposição vetorial · puntiformes no vácuo · r mínimo 0,05 m · preset: +2µC/−3µC a 0,30 m = 0,599 N</div>
 <div id="toast"></div>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
 <script src="app.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
 </body>
 </html>

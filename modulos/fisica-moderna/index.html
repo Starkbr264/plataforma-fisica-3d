@@ -5,18 +5,19 @@
 <title>Física Moderna 3D — Fotoelétrico, Bohr e Decaimento</title>
 <link rel="stylesheet" href="../../css/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="c" class="webgl"></canvas>
-<div id="top" class="glass"><span class="logo">⚛️ FÍSICA MODERNA · MVP</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="atom" class="ic"></i> FÍSICA MODERNA</span>
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Coulomb</a><span class="tb act">Moderna</span>
 <a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (cena 3D)</h3>
-  <div class="kv"><span>🔦 fonte de luz</span><b>fótons roxos</b></div>
+  <div class="kv"><span><i data-lucide="flashlight" class="ic"></i> fonte de luz</span><b>fótons roxos</b></div>
   <div class="kv"><span>▬ metal</span><b id="lMetal">φ = 2.3 eV</b></div>
-  <div class="kv"><span>⚛ átomo H (Bohr)</span><b id="lBohr">n = 2</b></div>
-  <div class="kv"><span>☢ amostra radioativa</span><b id="lRadio">48 núcleos</b></div>
+  <div class="kv"><span><i data-lucide="atom" class="ic"></i> átomo H (Bohr)</span><b id="lBohr">n = 2</b></div>
+  <div class="kv"><span><i data-lucide="radiation" class="ic"></i> amostra radioativa</span><b id="lRadio">48 núcleos</b></div>
   <h3>Presets</h3>
   <button class="btn primary" id="bNa">Na: φ=2.3 eV, f=10¹⁵ Hz (emite)</button>
   <button class="btn" id="bZn">Zn: φ=4.3 eV (corta emissão)</button>
@@ -61,5 +62,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
 <script src="app.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
 </body>
 </html>

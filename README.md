@@ -73,13 +73,13 @@ Detalhe por fórmula em `docs/REFERENCIAS.md`.
 
 ## Ordem de desenvolvimento (do PROMPT)
 
-1. ✅ Base (câmera, painéis, sliders) — em `css/style.css` + cada `app.js`
-2. ✅ Eletrostática (MVP: 2 cargas, vetores, F em tempo real)
-3. ✅ Eletromagnetismo
-4. ✅ Física Moderna
-5. ✅ Eletrodinâmica
-6. ✅ Termodinâmica
-7. ✅ Integração (fórmulas, gráficos, save/compare no modo livre)
+1. [ok] Base (câmera, painéis, sliders) — em `css/style.css` + cada `app.js`
+2. [ok] Eletrostática (MVP: 2 cargas, vetores, F em tempo real)
+3. [ok] Eletromagnetismo
+4. [ok] Física Moderna
+5. [ok] Eletrodinâmica
+6. [ok] Termodinâmica
+7. [ok] Integração (fórmulas, gráficos, save/compare no modo livre)
 
 ## Qualidade
 

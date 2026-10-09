@@ -5,21 +5,22 @@
 <title>Termodinâmica 3D — Gases Ideais</title>
 <link rel="stylesheet" href="../../css/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="c" class="webgl"></canvas>
-<div id="top" class="glass"><span class="logo">🔥 TERMODINÂMICA · GASES</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="thermometer" class="ic"></i> TERMODINÂMICA · GASES</span>
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Coulomb</a><span class="tb act">Gases</span>
 <a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (arraste no 3D)</h3>
   <div class="kv"><span>◉ cilindro + pistão</span><b id="lVol">2,00 L</b></div>
-  <div class="kv"><span>🔥 queimador / ❄ resfriador</span><b id="lModo">isobárico</b></div>
+  <div class="kv"><span><i data-lucide="flame" class="ic"></i> queimador / <i data-lucide="snowflake" class="ic"></i> resfriador</span><b id="lModo">isobárico</b></div>
   <div class="kv"><span>● N partículas</span><b>~120</b></div>
   <button class="btn" id="bIsoT">Preset: isoterma (T const)</button>
   <button class="btn" id="bIsoP">Preset: isobárica (P const)</button>
   <button class="btn" id="bIsoV">Preset: isocórica (V const)</button>
-  <div class="row"><button class="btn" id="bAquecer">🔥 +20 K</button><button class="btn" id="bResfriar">❄ −20 K</button></div>
+  <div class="row"><button class="btn" id="bAquecer"><i data-lucide="flame" class="ic"></i> +20 K</button><button class="btn" id="bResfriar"><i data-lucide="snowflake" class="ic"></i> −20 K</button></div>
   <div class="warn">Arraste o pistão (disco) para mudar V. Órbita: arrastar no fundo · zoom: scroll. Velocidade das partículas ∝ √T, cor azul→vermelho com T.</div>
 </aside>
 <aside id="right" class="glass">
@@ -58,5 +59,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
 <script src="app.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
 </body>
 </html>

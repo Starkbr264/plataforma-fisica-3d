@@ -4,9 +4,10 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Modo Livre — salvar, comparar, medir</title>
 <link rel="stylesheet" href="../../css/style.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
-<div id="top" class="glass"><span class="logo">🧪 MODO LIVRE</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="flask-conical" class="ic"></i> MODO LIVRE</span>
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Eletrostática</a><span class="tb act">Livre</span></nav></div>
 <main class="hub">
   <section class="glass card" style="padding:16px">
@@ -43,9 +44,9 @@ function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTi
 function refresh(){
   const d=$('saved');d.innerHTML='';
   store.list().forEach(k=>{
-    const b=document.createElement('button');b.className='tb';b.textContent='⬇ '+k;
+    const b=document.createElement('button');b.className='tb';b.innerHTML='<i data-lucide="download" class="ic"></i> '+k;
     b.onclick=()=>{const o=store.load(k);$('tA').value=JSON.stringify(o,null,1);toast(k+' carregado em A — cole outro em B e compare');};
-    const x=document.createElement('button');x.className='tb';x.textContent='✕';
+    const x=document.createElement('button');x.className='tb';x.innerHTML='<i data-lucide="x" class="ic"></i>';
     x.onclick=()=>{localStorage.removeItem('fis3d:'+k);refresh();};
     const w=document.createElement('span');w.append(b,x);d.append(w);
   });
@@ -65,7 +66,7 @@ function renderM(){const m=store.load('_med')||[];$('mTab').innerHTML=m.map((r,i
 $('bAdd').onclick=()=>{const m=store.load('_med')||[];m.push({n:$('mN').value||'med',v:$('mV').value,u:$('mU').value});store.save('_med',m);renderM();toast('Medição registrada');};
 $('bCsv').onclick=()=>{const m=store.load('_med')||[];const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['nome;valor;unidade\n'+m.map(r=>`${r.n};${r.v};${r.u}`).join('\n')],{type:'text/csv'}));a.download='medicoes.csv';a.click();};
-refresh();
+refresh();if(window.lucide)lucide.createIcons();
 </script>
 </body>
 </html>

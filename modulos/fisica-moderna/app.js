@@ -136,7 +136,7 @@ function calc() {
     $('rLambda').textContent = fmt(lam) + ' m (' + fmt(lam * 1e9) + ' nm)';
     $('rE').textContent = fmt(E) + ' J (' + fmt(E / EV) + ' eV)';
     $('rF0').textContent = fmt(f0) + ' Hz';
-    $('rK').textContent = fmt(Kmax / EV) + ' eV · ' + (r.emite ? 'EMITE ✓' : 'sem emissão (hf<φ)');
+    $('rK').textContent = fmt(Kmax / EV) + ' eV · ' + (r.emite ? 'EMITE +' : 'sem emissão (hf<φ)');
     $('rK').style.color = r.emite ? '#5dffb0' : '#ff8f9d';
     $('rDeb').textContent = debTxt;
     $('rBohr').textContent = S.ni === S.nf

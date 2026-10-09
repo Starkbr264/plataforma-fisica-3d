@@ -5,17 +5,18 @@
 <title>Eletromagnetismo 3D — Fio, Espira e Indução</title>
 <link rel="stylesheet" href="../../css/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="c" class="webgl"></canvas>
-<div id="top" class="glass"><span class="logo">🧲 ELETROMAGNETISMO · MVP</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="magnet" class="ic"></i> ELETROMAGNETISMO</span>
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Eletrostática</a><span class="tb act">Magnetismo</span><a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (arraste no 3D)</h3>
   <div class="kv"><span>┃ fio vertical (centro)</span><b id="lFio">I = 5 A</b></div>
-  <div class="kv"><span>🧲 ímã N/S (arrastável)</span><b id="lIma">dipolo didático</b></div>
+  <div class="kv"><span><i data-lucide="magnet" class="ic"></i> ímã N/S (arrastável)</span><b id="lIma">dipolo didático</b></div>
   <div class="kv"><span>◉ partícula +e (arrastável)</span><b id="lPar"> próton</b></div>
-  <div class="kv"><span>🌀 bobina (direita)</span><b id="lBob">N = 100</b></div>
+  <div class="kv"><span><i data-lucide="spline" class="ic"></i> bobina (direita)</span><b id="lBob">N = 100</b></div>
   <div class="row"><button class="btn" id="bInd">Indução: aproximar/afastar</button></div>
   <div class="row"><button class="btn" id="bInv">Inverter I</button><button class="btn" id="bZero">I = 0</button></div>
   <div class="row"><button class="btn" id="bPresetFio">Preset fio 5 A</button><button class="btn" id="bPresetInd">Preset indução</button></div>
@@ -54,5 +55,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
 <script src="app.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
 </body>
 </html>

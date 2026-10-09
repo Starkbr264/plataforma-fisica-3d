@@ -1,14 +1,26 @@
-
-
+/* Eletrostatica N-cargas: superposicao vetorial real. Tudo calculado via FIS. */
 const { fmt, coulomb, campoQ, potencialQ, energiaU, store } = window.FIS;
 
-katex.render("F = k\\dfrac{|q_1 q_2|}{r^2}", document.getElementById('kCoulomb'));
-katex.render("E = \\dfrac{F}{q},\\quad E_Q = k\\dfrac{|Q|}{r^2}", document.getElementById('kCampo'));
-katex.render("V = k\\dfrac{Q}{r},\\quad U = k\\dfrac{q_1 q_2}{r},\\quad W = -\\Delta U", document.getElementById('kPot'));
+katex.render("F = k\\dfrac{|q_i q_j|}{r^2}", document.getElementById('kCoulomb'));
+katex.render("\\vec{E} = \\sum_i kQ_i\\dfrac{\\vec{r}}{|\\vec{r}|^3}", document.getElementById('kCampo'));
+katex.render("V = \\sum_i k\\dfrac{Q_i}{r},\\quad U = \\sum_{i<j} k\\dfrac{q_i q_j}{r_{ij}}", document.getElementById('kPot'));
 
-// --- cena ---
-const cv = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+const Y = .45, RMIN = .05;
+let seq = 0;
+const S = {
+  charges: [
+    { id: ++seq, q: 2e-6, x: -.15, z: 0 },
+    { id: ++seq, q: -3e-6, x: .15, z: 0 },
+  ],
+  sel: 1, U0: null,
+  showRes: true, showField: true, showProbe: true,
+  probe: { x: 0, z: 1.1, q: 1e-9 },
+};
+const $ = (id) => document.getElementById(id);
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
+
+// ---------- cena ----------
+const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
 renderer.setPixelRatio(devicePixelRatio);
 function size() { renderer.setSize(innerWidth, innerHeight); }
 size(); addEventListener('resize', size);
@@ -22,128 +34,256 @@ scene.add(new THREE.GridHelper(16, 16, 0x2a3c66, 0x16223c));
 scene.add(new THREE.AmbientLight(0xffffff, .7));
 const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(4, 8, 5); scene.add(dl);
 
-function ball(color) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(.45, 32, 32),
-    new THREE.MeshStandardMaterial({ color, roughness: .3, metalness: .1 }));
-  m.userData.drag = true; scene.add(m);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(.62, .03, 10, 40),
-    new THREE.MeshBasicMaterial({ color }));
-  ring.rotation.x = Math.PI / 2; m.add(ring);
+const meshes = new Map(); // id -> {grp, mesh, ring, arrow, lines[]}
+function makeChargeMesh() {
+  const grp = new THREE.Group();
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(.32, 28, 28),
+    new THREE.MeshStandardMaterial({ roughness: .3, metalness: .1 }));
+  mesh.userData.drag = true; grp.add(mesh);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.46, .025, 10, 40),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  ring.rotation.x = Math.PI / 2; grp.add(ring); mesh.userData.ring = ring;
   const lbl = document.createElement('canvas'); lbl.width = 128; lbl.height = 64;
-  m.userData.lbl = lbl;
   const tex = new THREE.CanvasTexture(lbl);
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  spr.scale.set(1.4, .7, 1); spr.position.y = .95; m.add(spr);
-  m.userData.tex = tex;
-  return m;
+  spr.scale.set(1.3, .65, 1); spr.position.y = .85; grp.add(spr);
+  const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0xffcf4d, .25, .15);
+  scene.add(arrow);
+  const lines = [];
+  for (let i = 0; i < 8; i++) {
+    const l = new THREE.Line(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: 0x5dffb0, transparent: true, opacity: .3 }));
+    scene.add(l); lines.push(l);
+  }
+  scene.add(grp);
+  return { grp, mesh, ring, lbl, tex, arrow, lines };
 }
-const q1m = ball(0xff5b6e), q2m = ball(0x4da3ff);
-const prova = new THREE.Mesh(new THREE.SphereGeometry(.16, 20, 20),
-  new THREE.MeshStandardMaterial({ color: 0xb78cff })); prova.visible = false; scene.add(prova);
-const a1 = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0xffcf4d, .3, .18);
-const a2 = new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(), 1, 0xffcf4d, .3, .18);
-scene.add(a1, a2);
-// linhas de campo didáticas (radiais da q1)
-const fieldGrp = new THREE.Group(); scene.add(fieldGrp);
-for (let i = 0; i < 12; i++) {
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(1, 0, 0)]);
-  fieldGrp.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x5dffb0, transparent: true, opacity: .35 })));
-}
-
-const S = { q1: 5e-6, q2: -5e-6, r: 2.0, U0: null };
-const $ = (id) => document.getElementById(id);
-const sQ1 = $('sQ1'), sQ2 = $('sQ2'), sR = $('sR');
-
-function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
-function setLabel(m, txt) {
-  const c = m.userData.lbl, x = c.getContext('2d');
+function setLabel(o, txt) {
+  const x = o.lbl.getContext('2d');
   x.clearRect(0, 0, 128, 64); x.fillStyle = '#fff'; x.font = 'bold 30px sans-serif';
-  x.textAlign = 'center'; x.fillText(txt, 64, 42); m.userData.tex.needsUpdate = true;
+  x.textAlign = 'center'; x.fillText(txt, 64, 42); o.tex.needsUpdate = true;
 }
-function place() {
-  q1m.position.set(-S.r / 2, .45, 0); q2m.position.set(S.r / 2, .45, 0);
-  prova.position.set(0, .45, 1.1);
+const prova = new THREE.Mesh(new THREE.SphereGeometry(.14, 20, 20),
+  new THREE.MeshStandardMaterial({ color: 0xb78cff }));
+prova.userData.drag = true; prova.userData.probe = true; scene.add(prova);
+const aE = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0x5dffb0, .22, .13);
+scene.add(aE);
+
+function syncMeshes() {
+  for (const [id, o] of meshes) {
+    if (!S.charges.some(c => c.id === id)) {
+      scene.remove(o.grp, o.arrow); o.lines.forEach(l => scene.remove(l)); meshes.delete(id);
+    }
+  }
+  for (const c of S.charges) {
+    if (!meshes.has(c.id)) meshes.set(c.id, makeChargeMesh());
+    const o = meshes.get(c.id);
+    o.mesh.userData.cid = c.id;
+    o.grp.position.set(c.x, Y, c.z);
+    const col = c.q >= 0 ? 0xff5b6e : 0x4da3ff;
+    o.mesh.material.color.set(col);
+    const sel = c.id === S.sel;
+    o.ring.material.color.set(sel ? 0xffffff : col);
+    o.grp.scale.setScalar(sel ? 1.18 : 1);
+    setLabel(o, c.q >= 0 ? '+' : '−');
+    o.lines.forEach(l => l.visible = S.showField);
+    o.arrow.visible = S.showRes;
+  }
+  prova.visible = S.showProbe;
+  prova.position.set(S.probe.x, Y, S.probe.z);
 }
+
+// ---------- fisica ----------
+function pairR(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+function pairF(a, b) { return coulomb(a.q, b.q, Math.max(pairR(a, b), RMIN)); }
+function resultOn(c) { // superposicao vetorial das forcas sobre c
+  let fx = 0, fz = 0;
+  for (const o of S.charges) {
+    if (o.id === c.id) continue;
+    const dx = c.x - o.x, dz = c.z - o.z;
+    const r = Math.max(Math.hypot(dx, dz), RMIN);
+    const F = coulomb(c.q, o.q, r);
+    const rep = c.q * o.q > 0;
+    const s = rep ? 1 : -1; // repulsao: ao longo de +(c-o); atracao: oposto
+    fx += s * F * dx / r; fz += s * F * dz / r;
+  }
+  return { fx, fz, mod: Math.hypot(fx, fz) };
+}
+function fieldAt(x, z) { // E vetorial + V escalar por superposicao
+  let ex = 0, ez = 0, V = 0;
+  for (const c of S.charges) {
+    const dx = x - c.x, dz = z - c.z;
+    const r = Math.max(Math.hypot(dx, dz), RMIN);
+    const E = campoQ(c.q, r);
+    const s = c.q >= 0 ? 1 : -1; // campo aponta p/ longe de + e p/ dentro de −
+    ex += s * E * dx / r; ez += s * E * dz / r;
+    V += potencialQ(c.q, r);
+  }
+  return { ex, ez, mod: Math.hypot(ex, ez), V };
+}
+function totalU() {
+  let U = 0;
+  for (let i = 0; i < S.charges.length; i++)
+    for (let j = i + 1; j < S.charges.length; j++)
+      U += energiaU(S.charges[i].q, S.charges[j].q,
+        Math.max(pairR(S.charges[i], S.charges[j]), RMIN));
+  return U;
+}
+const arrowLen = (v) => THREE.MathUtils.clamp(.35 + Math.log10(1 + v) * .85, .35, 3);
+
 function calc() {
   const alert = $('alert'); alert.innerHTML = '';
   try {
-    const F = coulomb(S.q1, S.q2, S.r);
-    const r2 = S.r / 2;
-    const E1 = campoQ(S.q1, r2), E2 = campoQ(S.q2, r2);
-    const dir1 = S.q1 > 0 ? 1 : -1;   // q1 à esquerda: campo no centro aponta +x se q1>0? não: longe de q1 = +x
-    const dir2 = S.q2 > 0 ? -1 : 1;   // q2 à direita: longe de q2 = −x se q2>0
-    const Exr = dir1 * E1 + dir2 * E2;
-    const V = potencialQ(S.q1, r2) + potencialQ(S.q2, r2);
-    const U = energiaU(S.q1, S.q2, S.r);
+    const sel = S.charges.find(c => c.id === S.sel) || S.charges[0];
+    // pares da selecionada
+    let html = '', near = null, nearR = 1e9;
+    for (const o of S.charges) {
+      if (!sel || o.id === sel.id) continue;
+      const r = pairR(sel, o), F = pairF(sel, o);
+      if (r < nearR) { nearR = r; near = o; }
+      html += `<div class="kv"><span>q${sel.id}↔q${o.id} · ${r.toFixed(2)} m · ${sel.q * o.q < 0 ? 'atração' : 'repulsão'}</span><b>${fmt(F)} N</b></div>`;
+    }
+    $('pairTable').innerHTML = html || '<span style="color:var(--dim)">Adicione mais cargas.</span>';
+    // resultantes -> setas
+    for (const c of S.charges) {
+      const o = meshes.get(c.id); if (!o) continue;
+      const R = resultOn(c);
+      o.arrow.position.set(c.x, Y, c.z);
+      if (R.mod > 0) o.arrow.setDirection(new THREE.Vector3(R.fx / R.mod, 0, R.fz / R.mod));
+      o.arrow.setLength(c.q === 0 ? .001 : arrowLen(R.mod));
+      o.arrow.visible = S.showRes && c.q !== 0 && R.mod > 0;
+    }
+    if (sel) {
+      const R = resultOn(sel);
+      $('rF').textContent = fmt(R.mod) + ' N';
+      $('stepF').textContent = S.charges.length < 2 ? 'Adicione outra carga.'
+        : `Resultante em q${sel.id} = soma vetorial de ${S.charges.length - 1} par(es) F=k|qiqj|/r²  =  ${fmt(R.mod)} N`;
+    } else $('rF').textContent = '—';
+    // prova
+    const F_ = fieldAt(S.probe.x, S.probe.z);
+    const Fp = Math.abs(S.probe.q) * F_.mod;
+    $('rE').textContent = fmt(F_.mod) + ' N/C';
+    $('rV').textContent = fmt(F_.V) + ' V';
+    aE.visible = S.showProbe && F_.mod > 0;
+    if (F_.mod > 0) {
+      aE.position.set(S.probe.x, Y, S.probe.z);
+      aE.setDirection(new THREE.Vector3(F_.ex / F_.mod, 0, F_.ez / F_.mod));
+      aE.setLength(arrowLen(F_.mod));
+    }
+    $('stepE').textContent = `E = Σ kQ·r̂/r² em (${S.probe.x.toFixed(2)}, ${S.probe.z.toFixed(2)}) = ${fmt(F_.mod)} N/C · F=qE=${fmt(Fp)} N`;
+    const U = totalU();
     if (S.U0 == null) S.U0 = U;
-    const W = -(U - S.U0);
-    const atr = S.q1 * S.q2 < 0;
-    $('rF').textContent = fmt(F) + ' N';
-    $('rNat').textContent = S.q1 === 0 || S.q2 === 0 ? 'nula (carga zero)' : atr ? 'ATRAÇÃO' : 'REPULSÃO';
-    $('rE').textContent = fmt(Math.abs(Exr)) + ' N/C (' + (Exr >= 0 ? '+x' : '−x') + ')';
-    $('rV').textContent = fmt(V) + ' V';
     $('rU').textContent = fmt(U) + ' J';
-    $('rW').textContent = fmt(W) + ' J';
-    $('stepF').textContent = `F = 8,988×10^9 × |(${fmt(S.q1)})(${fmt(S.q2)})| / ${S.r.toFixed(2)}²\n  = ${fmt(F)} N`;
-    $('stepE').textContent = `E₁=k|q₁|/(r/2)²=${fmt(E1)}  E₂=${fmt(E2)} N/C → soma vetorial Ex=${fmt(Exr)} N/C`;
-    $('stepV').textContent = `V = k·q₁/(r/2)+k·q₂/(r/2) = ${fmt(V)} V · U = k·q₁q₂/r = ${fmt(U)} J`;
-    // setas: tamanho ∝ log para caber na cena, direção física
-    const rep = S.q1 * S.q2 > 0;
-    const d1 = rep ? -1 : 1, d2 = rep ? 1 : -1; // repulsão: q1←, q2→ ; atração: q1→, q2←
-    const L = THREE.MathUtils.clamp(.4 + Math.log10(1 + F) * .9, .4, 3.2);
-    a1.position.copy(q1m.position); a1.setDirection(new THREE.Vector3(d1, 0, 0)); a1.setLength(S.q1 === 0 ? .001 : L);
-    a2.position.copy(q2m.position); a2.setDirection(new THREE.Vector3(d2, 0, 0)); a2.setLength(S.q2 === 0 ? .001 : L);
-    a1.visible = a2.visible = !(S.q1 === 0 || S.q2 === 0);
-    drawGraph(F);
-    return { F };
-  } catch (e) { alert.innerHTML = `<div class="err">${e.message}</div>`; return null; }
+    $('stepV').textContent = `V = Σ kQ/r = ${fmt(F_.V)} V · U = Σ kqiqj/rij = ${fmt(U)} J`;
+    // aviso de pares muito proximos
+    let close = false;
+    for (let i = 0; i < S.charges.length && !close; i++)
+      for (let j = i + 1; j < S.charges.length; j++)
+        if (pairR(S.charges[i], S.charges[j]) < .2) close = true;
+    if (close) alert.innerHTML = `<div class="warn">Par com r &lt; 0,2 m: modelo puntiforme no limite (F ∝ 1/r² diverge).</div>`;
+    drawGraph(sel, near);
+  } catch (e) { alert.innerHTML = `<div class="err">${e.message}</div>`; }
 }
-function drawGraph(Fnow) {
-  const g = document.getElementById('g'), x = g.getContext('2d');
+function drawGraph(sel, near) {
+  const g = $('g'), x = g.getContext('2d');
   x.clearRect(0, 0, g.width, g.height);
-  x.strokeStyle = '#223'; x.fillStyle = '#93a4cc'; x.font = '11px sans-serif';
-  const rMax = 8, fMax = coulomb(Math.abs(S.q1) || 1e-6, Math.abs(S.q2) || 1e-6, .2);
+  x.fillStyle = '#93a4cc'; x.font = '11px sans-serif';
+  if (!sel || !near) { x.fillText('Selecione uma carga com ao menos 1 vizinha.', 8, 20); return; }
+  const qq = Math.abs(sel.q * near.q), r0 = pairR(sel, near);
+  const rMax = 8, fMax = coulomb(qq || 1e-12, 1, .2);
   x.beginPath();
   for (let px = 0; px <= g.width; px += 3) {
     const r = .2 + (rMax - .2) * px / g.width;
-    const f = coulomb(Math.abs(S.q1), Math.abs(S.q2), r);
+    const f = coulomb(qq, 1, r);
     const py = g.height - 12 - (Math.log10(1 + f) / Math.log10(1 + fMax)) * (g.height - 30);
     px === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
   }
   x.strokeStyle = '#4da3ff'; x.lineWidth = 2; x.stroke();
-  const px = (S.r - .2) / (rMax - .2) * g.width;
-  const py = g.height - 12 - (Math.log10(1 + (Fnow || 0)) / Math.log10(1 + fMax)) * (g.height - 30);
+  const f0 = coulomb(qq, 1, Math.max(r0, .2));
+  const px = (Math.max(r0, .2) - .2) / (rMax - .2) * g.width;
+  const py = g.height - 12 - (Math.log10(1 + f0) / Math.log10(1 + fMax)) * (g.height - 30);
   x.fillStyle = '#ffcf4d'; x.beginPath(); x.arc(px, py, 5, 0, 7); x.fill();
-  x.fillStyle = '#93a4cc'; x.fillText('0,2 m', 4, g.height - 1); x.fillText('8 m', g.width - 24, g.height - 1);
+  x.fillStyle = '#93a4cc'; x.fillText('0,2 m', 4, g.height - 1); x.fillText(`r atual ${r0.toFixed(2)} m`, px - 30, py - 10); x.fillText('8 m', g.width - 24, g.height - 1);
 }
-function syncUI() {
-  $('oQ1').textContent = (S.q1 * 1e6).toFixed(1); $('oQ2').textContent = (S.q2 * 1e6).toFixed(1);
-  $('oR').textContent = S.r.toFixed(2);
-  $('lQ1').textContent = `${(S.q1 * 1e6).toFixed(1)} µC`; $('lQ2').textContent = `${(S.q2 * 1e6).toFixed(1)} µC`;
-  q1m.material.color.set(S.q1 >= 0 ? 0xff5b6e : 0x4da3ff);
-  q2m.material.color.set(S.q2 >= 0 ? 0xff5b6e : 0x4da3ff);
-  setLabel(q1m, S.q1 >= 0 ? '+' : '−'); setLabel(q2m, S.q2 >= 0 ? '+' : '−');
-  place(); calc();
+
+// ---------- UI ----------
+function refreshList() {
+  const d = $('chargeList'); d.innerHTML = '';
+  $('nQ').textContent = S.charges.length;
+  for (const c of S.charges) {
+    const b = document.createElement('button');
+    b.className = 'tb' + (c.id === S.sel ? ' act' : '');
+    b.style.textAlign = 'left';
+    b.textContent = `q${c.id}  ${(c.q * 1e6).toFixed(1)} µC  (${c.x.toFixed(2)}, ${c.z.toFixed(2)})`;
+    b.onclick = () => { S.sel = c.id; syncAll(); };
+    d.appendChild(b);
+  }
+  const sel = S.charges.find(c => c.id === S.sel);
+  $('selName').textContent = sel ? `q${sel.id}` : '—';
+  if (sel) {
+    $('sQ').value = sel.q * 1e6; $('oQ').textContent = (sel.q * 1e6).toFixed(1);
+    $('nX').value = sel.x.toFixed(2); $('nZ').value = sel.z.toFixed(2);
+  } else { $('oQ').textContent = '—'; }
 }
-sQ1.oninput = () => { S.q1 = +sQ1.value * 1e-6; syncUI(); };
-sQ2.oninput = () => { S.q2 = +sQ2.value * 1e-6; syncUI(); };
-sR.oninput = () => { S.r = +sR.value; syncUI(); };
-$('cProva').onchange = (e) => prova.visible = e.target.checked;
-$('bSwap').onclick = () => { S.q1 *= -1; S.q2 *= -1; sQ1.value = S.q1 * 1e6; sQ2.value = S.q2 * 1e6; syncUI(); toast('Sinais invertidos'); };
-$('bEq').onclick = () => { S.q1 = S.q2 = 5e-6; sQ1.value = sQ2.value = 5; syncUI(); };
-$('bReset').onclick = () => { S.U0 = null; calc(); toast('Referência de energia resetada'); };
+function syncAll() { syncMeshes(); refreshList(); calc(); }
+function addCharge(q) {
+  const a = Math.random() * Math.PI * 2;
+  const c = { id: ++seq, q, x: + (Math.cos(a) * 1.8).toFixed(2), z: + (Math.sin(a) * 1.8).toFixed(2) };
+  S.charges.push(c); S.sel = c.id; S.U0 = null; syncAll(); toast(`q${c.id} adicionada`);
+}
+$('bAddPos').onclick = () => addCharge(5e-6);
+$('bAddNeg').onclick = () => addCharge(-5e-6);
+$('bPreset').onclick = () => {
+  S.charges = [{ id: ++seq, q: 2e-6, x: -.15, z: 0 }, { id: ++seq, q: -3e-6, x: .15, z: 0 }];
+  S.sel = S.charges[0].id; S.U0 = null; S.probe = { x: 0, z: 1.1, q: 1e-9 };
+  syncAll(); toast('Preset: F deve dar ≈ 0,599 N (atração)');
+};
+$('bClear').onclick = () => { if (confirm('Remover todas as cargas?')) { S.charges = []; S.sel = null; S.U0 = null; syncAll(); } };
+$('bDel').onclick = () => {
+  S.charges = S.charges.filter(c => c.id !== S.sel);
+  S.sel = S.charges.length ? S.charges[0].id : null; S.U0 = null; syncAll();
+};
+$('bDup').onclick = () => {
+  const s = S.charges.find(c => c.id === S.sel); if (!s) return;
+  const c = { id: ++seq, q: s.q, x: +(s.x + .6).toFixed(2), z: s.z };
+  S.charges.push(c); S.sel = c.id; S.U0 = null; syncAll();
+};
+$('sQ').oninput = (e) => {
+  const s = S.charges.find(c => c.id === S.sel); if (!s) return;
+  s.q = +e.target.value * 1e-6; $('oQ').textContent = (+e.target.value).toFixed(1); syncAll();
+};
+$('nX').onchange = (e) => {
+  const s = S.charges.find(c => c.id === S.sel); if (!s) return;
+  s.x = THREE.MathUtils.clamp(+e.target.value || 0, -4, 4); syncAll();
+};
+$('nZ').onchange = (e) => {
+  const s = S.charges.find(c => c.id === S.sel); if (!s) return;
+  s.z = THREE.MathUtils.clamp(+e.target.value || 0, -3, 3); syncAll();
+};
+$('cRes').onchange = (e) => { S.showRes = e.target.checked; syncAll(); };
+$('cField').onchange = (e) => { S.showField = e.target.checked; syncAll(); };
+$('cProva').onchange = (e) => { S.showProbe = e.target.checked; syncAll(); };
 $('bSave').onclick = () => { store.save('eletrostatica', S); toast('Salvo (Modo Livre consegue carregar)'); };
 
-// arrastar esferas no plano y=.45
+// ---------- arrastar (cargas + prova) ----------
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let drag = null;
-const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -.45);
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -Y);
 function pick(e) {
   ptr.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ptr, cam);
-  const hit = ray.intersectObjects([q1m, q2m]);
+  const objs = [prova, ...[...meshes.values()].map(o => o.mesh)];
+  const hit = ray.intersectObjects(objs);
   return hit.length ? hit[0].object : null;
 }
-renderer.domElement.addEventListener('pointerdown', (e) => { drag = pick(e); if (drag) ctl.enabled = false; });
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  const o = pick(e);
+  if (o) {
+    ctl.enabled = false;
+    if (o.userData.probe) drag = { probe: true };
+    else { drag = { cid: o.userData.cid }; S.sel = o.userData.cid; }
+    syncAll();
+  }
+});
 addEventListener('pointerup', () => { drag = null; ctl.enabled = true; });
 addEventListener('pointermove', (e) => {
   if (!drag) return;
@@ -151,20 +291,38 @@ addEventListener('pointermove', (e) => {
   ray.setFromCamera(ptr, cam);
   const p = new THREE.Vector3();
   ray.ray.intersectPlane(plane, p);
-  p.x = THREE.MathUtils.clamp(p.x, -4, 4);
-  if (drag === q1m) { q1m.position.x = p.x; S.r = Math.abs(q2m.position.x - q1m.position.x) || .2; }
-  else { q2m.position.x = p.x; S.r = Math.abs(q2m.position.x - q1m.position.x) || .2; }
-  S.r = THREE.MathUtils.clamp(S.r, .2, 8); sR.value = S.r; syncUI();
+  p.x = THREE.MathUtils.clamp(p.x, -4, 4); p.z = THREE.MathUtils.clamp(p.z, -3, 3);
+  if (drag.probe) { S.probe.x = +p.x.toFixed(2); S.probe.z = +p.z.toFixed(2); }
+  else {
+    const c = S.charges.find(c => c.id === drag.cid);
+    if (c) { c.x = +p.x.toFixed(2); c.z = +p.z.toFixed(2); }
+  }
+  syncAll();
 });
+
+// ---------- loop ----------
 (function loop() {
   requestAnimationFrame(loop); ctl.update();
   const t = performance.now() / 1000;
-  fieldGrp.position.copy(q1m.position);
-  fieldGrp.children.forEach((l, i) => {
-    const a = i / 12 * Math.PI * 2 + t * .15;
-    l.geometry.setFromPoints([new THREE.Vector3(Math.cos(a) * .6, 0, Math.sin(a) * .6),
-      new THREE.Vector3(Math.cos(a) * 1.5, 0, Math.sin(a) * 1.5)]);
-  });
+  for (const c of S.charges) {
+    const o = meshes.get(c.id); if (!o) continue;
+    o.lines.forEach((l, i) => {
+      const a = i / 8 * Math.PI * 2 + t * .2;
+      l.geometry.setFromPoints([
+        new THREE.Vector3(c.x + Math.cos(a) * .42, Y, c.z + Math.sin(a) * .42),
+        new THREE.Vector3(c.x + Math.cos(a) * 1.15, Y, c.z + Math.sin(a) * 1.15)]);
+    });
+  }
   renderer.render(scene, cam);
 })();
-syncUI();
+
+// carrega save anterior, se houver
+try {
+  const sv = store.load('eletrostatica');
+  if (sv && Array.isArray(sv.charges) && sv.charges.length) {
+    S.charges = sv.charges; S.probe = sv.probe || S.probe;
+    seq = Math.max(...S.charges.map(c => c.id), 0);
+    S.sel = S.charges[0].id;
+  }
+} catch { /* ignora */ }
+syncAll();

@@ -5,19 +5,20 @@
 <title>Eletrodinâmica 3D — Circuitos</title>
 <link rel="stylesheet" href="../../css/style.css"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="c" class="webgl"></canvas>
-<div id="top" class="glass"><span class="logo">⚡ ELETRODINÂMICA · MVP</span>
+<div id="top" class="glass"><span class="logo"><i data-lucide="circuit-board" class="ic"></i> ELETRODINÂMICA</span>
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Coulomb</a><span class="tb act">Circuitos</span>
 <a class="tb" href="../eletromagnetismo/index.html">Magnetismo</a><a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (circuito na bancada)</h3>
-  <div class="kv"><span>🔋 Bateria</span><b id="lBat">12 V</b></div>
+  <div class="kv"><span><i data-lucide="battery-charging" class="ic"></i> Bateria</span><b id="lBat">12 V</b></div>
   <div class="kv"><span>▬ R₁ (cilindro)</span><b id="lR1">100 Ω</b></div>
   <div class="kv"><span>▬ R₂ (cilindro)</span><b id="lR2">100 Ω</b></div>
-  <div class="kv"><span>💡 Lâmpada</span><b id="lLamp">brilho ∝ P</b></div>
-  <div class="kv"><span>🔌 Interruptor</span><b id="lSw">fechada</b></div>
+  <div class="kv"><span><i data-lucide="lightbulb" class="ic"></i> Lâmpada</span><b id="lLamp">brilho ∝ P</b></div>
+  <div class="kv"><span><i data-lucide="power" class="ic"></i> Interruptor</span><b id="lSw">fechada</b></div>
   <div class="kv"><span>▮ Capacitor</span><b id="lCap">1000 µF</b></div>
   <div class="row"><button class="btn primary" id="bSerie">Preset série</button><button class="btn primary" id="bPar">Preset paralelo</button></div>
   <div class="warn">Partículas amarelas = corrente convencional (+ → −). Velocidade ∝ I. Chave aberta = circuito parado.</div>
@@ -54,5 +55,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
 <script src="app.js"></script>
+<script>if(window.lucide)lucide.createIcons();</script>
 </body>
 </html>

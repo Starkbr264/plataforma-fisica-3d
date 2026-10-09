@@ -16,5 +16,5 @@
 - Decaimento é valor esperado contínuo; pastilhas 3D arredondam para inteiro.
 
 ## Teste
-- Preset Na: φ=2.3 eV, f=10¹⁵ Hz → `E≈4.14 eV`, `Kmax≈1.84 eV`, emite ✓, f₀≈5.56×10¹⁴ Hz.
+- Preset Na: φ=2.3 eV, f=10¹⁵ Hz → `E≈4.14 eV`, `Kmax≈1.84 eV`, emite, f₀≈5.56×10¹⁴ Hz.
 - Zn φ=4.3 eV na mesma f → sem emissão. Lyman 2→1 → ΔE=10.2 eV, λ≈122 nm.
