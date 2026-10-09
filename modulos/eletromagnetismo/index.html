@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Eletromagnetismo 3D — Fio, Espira e Indução</title>
+<link rel="stylesheet" href="../../css/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+</head>
+<body>
+<canvas id="c" class="webgl"></canvas>
+<div id="top" class="glass"><span class="logo">🧲 ELETROMAGNETISMO · MVP</span>
+<nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Eletrostática</a><span class="tb act">Magnetismo</span><a class="tb" href="../livre/index.html">Livre</a></nav></div>
+<aside id="left" class="glass">
+  <h3>Peças (arraste no 3D)</h3>
+  <div class="kv"><span>┃ fio vertical (centro)</span><b id="lFio">I = 5 A</b></div>
+  <div class="kv"><span>🧲 ímã N/S (arrastável)</span><b id="lIma">dipolo didático</b></div>
+  <div class="kv"><span>◉ partícula +e (arrastável)</span><b id="lPar"> próton</b></div>
+  <div class="kv"><span>🌀 bobina (direita)</span><b id="lBob">N = 100</b></div>
+  <div class="row"><button class="btn" id="bInd">Indução: aproximar/afastar</button></div>
+  <div class="row"><button class="btn" id="bInv">Inverter I</button><button class="btn" id="bZero">I = 0</button></div>
+  <div class="row"><button class="btn" id="bPresetFio">Preset fio 5 A</button><button class="btn" id="bPresetInd">Preset indução</button></div>
+  <div class="warn">Anéis = linhas de B ao redor do fio (regra da mão direita). Arraste o ímã e a partícula com o mouse. Órbita: arrastar no fundo · zoom: scroll.</div>
+</aside>
+<aside id="right" class="glass">
+  <h3>Propriedades</h3>
+  <label class="ctl">Corrente I (A) <output id="oI">5.0</output><input type="range" id="sI" min="-10" max="10" step="0.1" value="5"/></label>
+  <label class="ctl">Distância r do fio (m) <output id="oR">0.50</output><input type="range" id="sR" min="0.1" max="3" step="0.01" value="0.5"/></label>
+  <label class="ctl">N espiras <output id="oN">100</output><input type="range" id="sN" min="1" max="500" step="1" value="100"/></label>
+  <label class="ctl">v partícula (×10⁶ m/s) <output id="oV">1.0</output><input type="range" id="sV" min="0" max="5" step="0.05" value="1"/></label>
+  <label class="ctl">Ângulo θ v×B / n×B (°) <output id="oT">90</output><input type="range" id="sT" min="0" max="180" step="1" value="90"/></label>
+  <label class="ctl">B externo uniforme (mT) <output id="oB">1.0</output><input type="range" id="sB" min="0" max="10" step="0.1" value="1"/></label>
+  <label class="ctl">Sinal da carga <select id="selQ"><option value="1" selected>+e (próton)</option><option value="-1">−e (elétron)</option></select></label>
+  <h3>Fórmulas (KaTeX + passo a passo)</h3>
+  <div class="formula"><div id="kB"></div><div class="step" id="stepB"></div></div>
+  <div class="formula"><div id="kF"></div><div class="step" id="stepF"></div></div>
+  <div class="formula"><div id="kPhi"></div><div class="step" id="stepPhi"></div></div>
+  <div class="formula"><div id="kEps"></div><div class="step" id="stepEps"></div></div>
+  <h3>Resultados SI</h3>
+  <div class="kv"><span>B do fio em r</span><b id="rB">—</b></div>
+  <div class="kv"><span>F magnética |q|vB·senθ</span><b id="rF">—</b></div>
+  <div class="kv"><span>Raio de Larmor r<sub>L</sub>=mv/|q|B</span><b id="rL">—</b></div>
+  <div class="kv"><span>F no fio (L=1 m, B<sub>ext</sub>)</span><b id="rFfio">—</b></div>
+  <div class="kv"><span>Fluxo Φ na bobina</span><b id="rPhi">—</b></div>
+  <div class="kv"><span>fem ε = −NΔΦ/Δt</span><b id="rEps">—</b></div>
+  <div class="kv"><span>Sentido (Lenz)</span><b id="rLenz">—</b></div>
+  <div class="row"><button class="btn primary" id="bSave">Salvar</button></div>
+  <div id="alert"></div>
+</aside>
+<div id="bottom" class="glass"><h3>Gráfico B × r — cai com 1/r (fio longo)</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="hud">Fio longo · B uniforme p/ fluxo · quase-estático · r clamp ≥ 0,1 m</div>
+<div id="toast"></div>
+<script src="../../js/core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

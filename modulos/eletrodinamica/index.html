@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Eletrodinâmica 3D — Circuitos</title>
+<link rel="stylesheet" href="../../css/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+</head>
+<body>
+<canvas id="c" class="webgl"></canvas>
+<div id="top" class="glass"><span class="logo">⚡ ELETRODINÂMICA · MVP</span>
+<nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Coulomb</a><span class="tb act">Circuitos</span>
+<a class="tb" href="../eletromagnetismo/index.html">Magnetismo</a><a class="tb" href="../livre/index.html">Livre</a></nav></div>
+<aside id="left" class="glass">
+  <h3>Peças (circuito na bancada)</h3>
+  <div class="kv"><span>🔋 Bateria</span><b id="lBat">12 V</b></div>
+  <div class="kv"><span>▬ R₁ (cilindro)</span><b id="lR1">100 Ω</b></div>
+  <div class="kv"><span>▬ R₂ (cilindro)</span><b id="lR2">100 Ω</b></div>
+  <div class="kv"><span>💡 Lâmpada</span><b id="lLamp">brilho ∝ P</b></div>
+  <div class="kv"><span>🔌 Interruptor</span><b id="lSw">fechada</b></div>
+  <div class="kv"><span>▮ Capacitor</span><b id="lCap">1000 µF</b></div>
+  <div class="row"><button class="btn primary" id="bSerie">Preset série</button><button class="btn primary" id="bPar">Preset paralelo</button></div>
+  <div class="warn">Partículas amarelas = corrente convencional (+ → −). Velocidade ∝ I. Chave aberta = circuito parado.</div>
+</aside>
+<aside id="right" class="glass">
+  <h3>Propriedades</h3>
+  <label class="ctl">Tensão U (V) <output id="oU">12</output><input type="range" id="sU" min="1" max="24" step="0.5" value="12"/></label>
+  <label class="ctl">R₁ (Ω) <output id="oR1">100</output><input type="range" id="sR1" min="1" max="1000" step="1" value="100"/></label>
+  <label class="ctl">R₂ (Ω) <output id="oR2">100</output><input type="range" id="sR2" min="1" max="1000" step="1" value="100"/></label>
+  <label class="ctl">Modo <output id="oModo">série</output><span class="row"><button class="btn" id="bModoS">Série</button><button class="btn" id="bModoP">Paralelo</button></span></label>
+  <label class="ctl"><input type="checkbox" id="cSw" style="width:auto" checked/> chave fechada (circuito ligado)</label>
+  <label class="ctl">C capacitor (µF) <output id="oC">1000</output><input type="range" id="sC" min="10" max="10000" step="10" value="1000"/></label>
+  <div class="row"><button class="btn" id="bResetC">Descarregar capacitor</button><button class="btn primary" id="bSave">Salvar</button></div>
+  <h3>Fórmulas (KaTeX + passo a passo)</h3>
+  <div class="formula"><div id="kOhm"></div><div class="step" id="stepOhm"></div></div>
+  <div class="formula"><div id="kReq"></div><div class="step" id="stepReq"></div></div>
+  <div class="formula"><div id="kPot"></div><div class="step" id="stepPot"></div></div>
+  <div class="formula"><div id="kCap"></div><div class="step" id="stepCap"></div></div>
+  <h3>Resultados SI</h3>
+  <div class="kv"><span>Req</span><b id="rReq">—</b></div>
+  <div class="kv"><span>Corrente I</span><b id="rI">—</b></div>
+  <div class="kv"><span>P total</span><b id="rP">—</b></div>
+  <div class="kv"><span>P₁ / P₂</span><b id="rP12">—</b></div>
+  <div class="kv"><span>Brilho lâmpada</span><b id="rBr">—</b></div>
+  <div class="kv"><span>Q capacitor</span><b id="rQ">—</b></div>
+  <div class="kv"><span>E capacitor</span><b id="rE">—</b></div>
+  <div id="alert"></div>
+</aside>
+<div id="bottom" class="glass"><h3>Capacitor Q × t — carga Q(t) = CU(1 − e^(−t/RC)) · ponto = agora</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="hud">Lei de Ohm validada · curto (R≈0) bloqueado · fios e fonte ideais</div>
+<div id="toast"></div>
+<script src="../../js/core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

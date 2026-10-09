@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Física 3D — Laboratório Virtual</title>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div id="top" class="glass">
+  <span class="logo">◉ FÍSICA·3D — LABORATÓRIO VIRTUAL</span>
+  <nav><span class="tb act">Hub</span><a class="tb" href="modulos/livre/index.html">Modo livre</a></nav>
+</div>
+<main class="hub">
+  <section class="hero glass">
+    <h1>Construa física, não só leia sobre ela</h1>
+    <p>Arraste peças para o 3D, mude sliders e veja vetores, campos, gráficos e fórmulas reagirem em tempo real. Cada número sai de <b>lei física calculada</b> (<span style="font-family:monospace">js/core.js</span>), com unidades SI e validação de domínio. Base: University Physics Vol. 2 e 3 + Moderna Plus 1.</p>
+  </section>
+  <section class="cards">
+    <a class="card glass" href="modulos/eletrostatica/index.html"><span class="tag">MVP · completo</span><h2>⚡ Eletrostática</h2><p>2+ cargas, Lei de Coulomb F=k|q₁q₂|/r², vetores, E, V, U. Arraste, aproxime, veja F ∝ 1/r² ao vivo + gráfico.</p></a>
+    <a class="card glass" href="modulos/eletromagnetismo/index.html"><span class="tag">campo B · indução</span><h2>🧲 Eletromagnetismo</h2><p>Ímã, fio, espira. B=μ₀I/2πr, F=qvB·senθ, fluxo Φ=BAcosθ, Faraday ε=−N·ΔΦ/Δt, Lenz visual.</p></a>
+    <a class="card glass" href="modulos/fisica-moderna/index.html"><span class="tag">fótons · átomo</span><h2>✨ Física Moderna</h2><p>Fotoelétrico Kₘₐₓ=hf−φ, Bohr Eₙ=−13,6/n² eV, de Broglie λ=h/p, decaimento N=N₀e^(−λt).</p></a>
+    <a class="card glass" href="modulos/eletrodinamica/index.html"><span class="tag">circuitos</span><h2>🔌 Eletrodinâmica</h2><p>Monte série/paralelo, Ohm U=RI, P=UI=R·I², brilho da lâmpada ∝ potência, capacitor Q=CU.</p></a>
+    <a class="card glass" href="modulos/termodinamica/index.html"><span class="tag">gases · P–V</span><h2>🌡️ Termodinâmica</h2><p>Pistão + partículas: PV=nRT, U=3nRT/2, W=PΔV, ΔU=Q−W, ciclo + diagrama P–V.</p></a>
+    <a class="card glass" href="modulos/livre/index.html"><span class="tag">save · compare</span><h2>🧪 Modo Livre</h2><p>Salve/carregue configs (localStorage + JSON), compare 2 simulações, registre medições.</p></a>
+  </section>
+  <section class="glass" style="padding:14px 16px;font-size:12.5px;color:var(--dim);line-height:1.6">
+    <b style="color:#fff">Como usar:</b> 1) abra um módulo · 2) arraste no 3D (botão esquerdo orbita, scroll = zoom, botão direito = pan) · 3) ajuste sliders · 4) leia fórmula + passo a passo · 5) confira o gráfico inferior. Detalhes de validade em <a href="docs/VALIDACAO.md">docs/VALIDACAO.md</a> (se abrir via file:// e o .md não renderizar, leia o arquivo no editor).
+  </section>
+</main>
+</body>
+</html>

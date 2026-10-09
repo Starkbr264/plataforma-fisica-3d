@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Modo Livre — salvar, comparar, medir</title>
+<link rel="stylesheet" href="../../css/style.css"/>
+</head>
+<body>
+<div id="top" class="glass"><span class="logo">🧪 MODO LIVRE</span>
+<nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Eletrostática</a><span class="tb act">Livre</span></nav></div>
+<main class="hub">
+  <section class="glass card" style="padding:16px">
+    <h2>Experimentos salvos (neste navegador)</h2>
+    <p style="color:var(--dim);font-size:12.5px">Cada módulo tem botão Salvar. Aqui você gerencia tudo.</p>
+    <div id="saved" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="bExp">Exportar tudo (JSON)</button>
+      <button class="btn" id="bClear">Apagar tudo</button>
+    </div>
+    <label class="ctl">Importar JSON<input type="file" id="fImp" accept=".json"/></label>
+  </section>
+  <section class="glass card" style="padding:16px">
+    <h2>Comparar A × B</h2>
+    <p style="color:var(--dim);font-size:12.5px">Cole duas configs (ou salve dos módulos) e compare número a número.</p>
+    <div class="row"><textarea id="tA" rows="6" style="flex:1;background:#0a1122;color:#fff;border:1px solid var(--line);border-radius:8px" placeholder='{"q1":5e-6,...}'></textarea>
+    <textarea id="tB" rows="6" style="flex:1;background:#0a1122;color:#fff;border:1px solid var(--line);border-radius:8px" placeholder='{"q1":5e-6,...}'></textarea></div>
+    <button class="btn primary" id="bCmp" style="margin-top:8px">Comparar</button>
+    <div id="cmpOut" style="font-size:12.5px;margin-top:8px"></div>
+  </section>
+  <section class="glass card" style="padding:16px">
+    <h2>Medições</h2>
+    <div class="row"><input id="mN" placeholder="nome (ex. F a 2m)"/><input id="mV" placeholder="valor"/><input id="mU" placeholder="unidade"/></div>
+    <div class="row" style="margin-top:6px"><button class="btn primary" id="bAdd">Registrar</button><button class="btn" id="bCsv">Baixar CSV</button></div>
+    <div id="mTab" style="margin-top:8px;font-size:12.5px"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="../../js/core.js"></script>
+<script>
+const { store } = window.FIS;
+const $ = (id) => document.getElementById(id);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1800);}
+function refresh(){
+  const d=$('saved');d.innerHTML='';
+  store.list().forEach(k=>{
+    const b=document.createElement('button');b.className='tb';b.textContent='⬇ '+k;
+    b.onclick=()=>{const o=store.load(k);$('tA').value=JSON.stringify(o,null,1);toast(k+' carregado em A — cole outro em B e compare');};
+    const x=document.createElement('button');x.className='tb';x.textContent='✕';
+    x.onclick=()=>{localStorage.removeItem('fis3d:'+k);refresh();};
+    const w=document.createElement('span');w.append(b,x);d.append(w);
+  });
+  if(!store.list().length)d.innerHTML='<span style="color:var(--dim);font-size:12px">Nada salvo ainda — abra um módulo e clique Salvar.</span>';
+  renderM();
+}
+$('bExp').onclick=()=>{const o={};store.list().forEach(k=>o[k]=store.load(k));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));a.download='fisica3d-experimentos.json';a.click();};
+$('bClear').onclick=()=>{store.list().forEach(k=>localStorage.removeItem('fis3d:'+k));refresh();};
+$('fImp').onchange=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result);Object.entries(o).forEach(([k,v])=>store.save(k,v));refresh();toast('Importado');}catch{toast('JSON inválido');}};r.readAsText(f);};
+$('bCmp').onclick=()=>{try{const a=JSON.parse($('tA').value||'{}'),b=JSON.parse($('tB').value||'{}');
+  const ks=[...new Set([...Object.keys(a),...Object.keys(b)])];
+  $('cmpOut').innerHTML='<table style="width:100%;border-collapse:collapse">'+ks.map(k=>`<tr><td style="color:var(--dim)">${k}</td><td>${JSON.stringify(a[k])??'—'}</td><td>${JSON.stringify(b[k])??'—'}</td><td>${a[k]===b[k]?'=':'≠'}</td></tr>`).join('')+'</table>';
+}catch{toast('JSON inválido em A ou B');}};
+function renderM(){const m=store.load('_med')||[];$('mTab').innerHTML=m.map((r,i)=>`${i+1}. <b>${r.n}</b> = ${r.v} ${r.u}`).join('<br>')||'<span style="color:var(--dim)">Sem medições.</span>';}
+$('bAdd').onclick=()=>{const m=store.load('_med')||[];m.push({n:$('mN').value||'med',v:$('mV').value,u:$('mU').value});store.save('_med',m);renderM();toast('Medição registrada');};
+$('bCsv').onclick=()=>{const m=store.load('_med')||[];const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['nome;valor;unidade\n'+m.map(r=>`${r.n};${r.v};${r.u}`).join('\n')],{type:'text/csv'}));a.download='medicoes.csv';a.click();};
+refresh();
+</script>
+</body>
+</html>

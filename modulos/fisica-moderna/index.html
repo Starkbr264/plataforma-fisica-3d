@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Física Moderna 3D — Fotoelétrico, Bohr e Decaimento</title>
+<link rel="stylesheet" href="../../css/style.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+</head>
+<body>
+<canvas id="c" class="webgl"></canvas>
+<div id="top" class="glass"><span class="logo">⚛️ FÍSICA MODERNA · MVP</span>
+<nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Coulomb</a><span class="tb act">Moderna</span>
+<a class="tb" href="../livre/index.html">Livre</a></nav></div>
+<aside id="left" class="glass">
+  <h3>Peças (cena 3D)</h3>
+  <div class="kv"><span>🔦 fonte de luz</span><b>fótons roxos</b></div>
+  <div class="kv"><span>▬ metal</span><b id="lMetal">φ = 2.3 eV</b></div>
+  <div class="kv"><span>⚛ átomo H (Bohr)</span><b id="lBohr">n = 2</b></div>
+  <div class="kv"><span>☢ amostra radioativa</span><b id="lRadio">48 núcleos</b></div>
+  <h3>Presets</h3>
+  <button class="btn primary" id="bNa">Na: φ=2.3 eV, f=10¹⁵ Hz (emite)</button>
+  <button class="btn" id="bZn">Zn: φ=4.3 eV (corta emissão)</button>
+  <button class="btn" id="bLyman">H: Lyman 2→1 (UV)</button>
+  <button class="btn" id="bBalmer">H: Balmer 2→3 (absorção)</button>
+  <button class="btn" id="bResetT">Zerar tempo decaimento</button>
+  <div class="warn">Modelo de Bohr didático — não é orbital real (nuvem quântica). Fotoelétrico ignora estrutura de bandas do metal.</div>
+</aside>
+<aside id="right" class="glass">
+  <h3>Propriedades</h3>
+  <label class="ctl">frequência f <output id="oF">1.00×10^15 Hz</output><input type="range" id="sF" min="13" max="15.477" step="0.01" value="15"/></label>
+  <div class="kv"><span>λ = c/f exibido</span><b id="rLambda">—</b></div>
+  <label class="ctl">função trabalho φ (eV) <output id="oPhi">2.3</output><input type="range" id="sPhi" min="1" max="6" step="0.1" value="2.3"/></label>
+  <label class="ctl">nível inicial nᵢ <output id="oNi">2</output><input type="range" id="sNi" min="1" max="3" step="1" value="2"/></label>
+  <label class="ctl">nível final nf <output id="oNf">1</output><input type="range" id="sNf" min="1" max="3" step="1" value="1"/></label>
+  <div class="row"><button class="btn primary" id="bTrans">Transição nᵢ → nf</button></div>
+  <label class="ctl">λ decaimento (1/s) <output id="oLam">0.050</output><input type="range" id="sLam" min="0.005" max="0.5" step="0.005" value="0.05"/></label>
+  <label class="ctl">tempo t (s) <output id="oT">20</output><input type="range" id="sT" min="0" max="200" step="1" value="20"/></label>
+  <div class="row"><button class="btn" id="bFoto">Gráfico: I × f</button><button class="btn" id="bDec">Gráfico: N × t</button>
+  <button class="btn" id="bSave">Salvar</button></div>
+  <h3>Fórmulas (KaTeX + passo a passo)</h3>
+  <div class="formula"><div id="kFoto1"></div><div class="step" id="stepE"></div></div>
+  <div class="formula"><div id="kFoto2"></div><div class="step" id="stepK"></div></div>
+  <div class="formula"><div id="kBohr"></div><div class="step" id="stepBohr"></div></div>
+  <div class="formula"><div id="kDeb"></div><div class="step" id="stepDeb"></div></div>
+  <div class="formula"><div id="kDec"></div><div class="step" id="stepDec"></div></div>
+  <h3>Resultados SI</h3>
+  <div class="kv"><span>E fóton</span><b id="rE">—</b></div>
+  <div class="kv"><span>f₀ limiar (φ/h)</span><b id="rF0">—</b></div>
+  <div class="kv"><span>Kmax / emite?</span><b id="rK">—</b></div>
+  <div class="kv"><span>λ de Broglie do e⁻ ejetado</span><b id="rDeb">—</b></div>
+  <div class="kv"><span>Bohr ΔE / λ linha</span><b id="rBohr">—</b></div>
+  <div class="kv"><span>N(t) restantes</span><b id="rN">—</b></div>
+  <div class="kv"><span>Meia-vida T½</span><b id="rT12">—</b></div>
+  <div id="alert"></div>
+</aside>
+<div id="bottom" class="glass"><h3 id="gTitle">Gráfico I × f — limiar f₀ (sem emissão abaixo de f₀)</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="hud">Fotoelétrico + Bohr + decaimento via window.FIS · Bohr só hidrogenoides</div>
+<div id="toast"></div>
+<script src="../../js/core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
