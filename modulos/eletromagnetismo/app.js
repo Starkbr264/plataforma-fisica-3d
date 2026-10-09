@@ -165,6 +165,13 @@ function calc() {
     const mu = fmt(C.mu0);
     $('stepB').textContent = `B = μ₀|I|/2πr = (${mu})×${fmt(Math.abs(S.I))}/(2π×${S.r.toFixed(2)})\n  = ${fmt(B)} T`;
     $('stepF').textContent = `F = |q|vB·senθ = (${fmt(Math.abs(q))})(${fmt(S.v)})(${fmt(Btot)})·sen${S.theta}°\n  = ${fmt(F)} N`;
+    try {
+      const dp = Math.max(0.1, Math.hypot(par.position.x, par.position.z));
+      const Btp = Bfio(S.I, dp) + S.Bext;
+      const wPhys = Math.abs(q) * Btp / MP; // rad/s real
+      const slow = wPhys / (2 * Math.PI / T_GYRO_VIS);
+      $('stepF').textContent += `\nTrajetória em câmera lenta ×${fmt(slow)} (1 volta = ${T_GYRO_VIS} s na tela; rL real no painel)`;
+    } catch { /* mantém */ }
     $('stepPhi').textContent = `Φ = B·A·cosθ, A=π×${COIL_R}²=${fmt(COIL_A)} m², Bbob=${fmt(Bcoil)} T\n  = ${fmt(Phi)} Wb (d ímã-bobina = ${dIma.toFixed(2)} m)`;
     $('stepEps').textContent = lastEps == null
       ? 'ε = −N·ΔΦ/Δt — execute a animação de indução p/ medir ΔΦ/Δt.'
@@ -291,26 +298,43 @@ addEventListener('pointermove', (e) => {
   calc();
 });
 
-// ---------- loop: partícula sob v×B (2D, B saindo do plano) ----------
+// ---------- loop: particula sob v×B em CAMERA LENTA didatica ----------
+// Fisica real: w=|q|B/m (~1e5 rad/s p/ proton em 1 mT) com rL de metros.
+// A 60 fps isso gera aliasing: a seta de velocidade gira varias voltas por
+// quadro ("girando sem sentido"). Solucao padrao de sims didaticos:
+// desacelerar o giro p/ 1 volta a cada T_GYRO_VIS s, preservando o SENTIDO
+// fisico (sinal de q, de B e sen θ) e exibindo o fator de camera lenta.
+const T_GYRO_VIS = 5; // s por volta na tela
+let running = true;
+$('bPlay').onclick = () => {
+  running = !running;
+  $('bPlay').innerHTML = running
+    ? '<i data-lucide="pause" class="ic"></i> Pausar'
+    : '<i data-lucide="play" class="ic"></i> Executar';
+  if (window.lucide) lucide.createIcons();
+};
+function resetPar() {
+  par.position.set(1.6, 0.5, 1.2); parVel.set(1, 0, 0); trailPts.length = 0;
+  trailGeo.setFromPoints(trailPts); calc();
+}
+$('bResetPar').onclick = resetPar;
 let prev = performance.now();
 (function loop() {
   requestAnimationFrame(loop); ctl.update();
   const now = performance.now();
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
-  // B na posição da partícula: fio (dist. radial no XZ) + externo
-  const dist = Math.max(0.1, Math.hypot(par.position.x, par.position.z));
-  let B = 0; try { B = Bfio(S.I, dist); } catch { B = 0; }
-  const Bt = B + S.Bext;
-  if (S.v > 0 && Bt > 0) {
-    const q = S.qsign * C.e;
-    const omega = (Math.abs(q) * Bt / MP) * Math.sign(q); // rad/s físico (enorme p/ próton)
+  if (running && S.v > 0) {
+    // B na posição da partícula: fio (dist. radial no XZ) + externo
+    const dist = Math.max(0.1, Math.hypot(par.position.x, par.position.z));
+    let B = 0; try { B = Bfio(S.I, dist); } catch { B = 0; }
+    const Bt = B + S.Bext;
     const th = S.theta * Math.PI / 180;
-    // visual: taxa didática clampada p/ no máx ~0.25 rad/frame (estável em qualquer Bt)
-    const turn = THREE.MathUtils.clamp(omega * Math.sin(th) * 0.02 * dt, -0.25, 0.25);
+    const wVis = Math.sign(S.qsign) * (Bt >= 0 ? 1 : -1) * Math.sin(th) * 2 * Math.PI / T_GYRO_VIS;
+    const turn = wVis * dt; // ≤ ~0.02 rad/quadro: suave e estavel
     const c = Math.cos(turn), s = Math.sin(turn);
     const vx = parVel.x * c - parVel.z * s, vz = parVel.x * s + parVel.z * c;
     if (vx * vx + vz * vz > 1e-12) parVel.set(vx, 0, vz).normalize();
-    const step = Math.min(2.2, (S.v / 1e6)) * dt * 1.5;
+    const step = (0.5 + Math.min(2, S.v / 1e6)) * dt;
     par.position.addScaledVector(parVel, step);
     if (Math.abs(par.position.x) > 7 || Math.abs(par.position.z) > 6) {
       par.position.set(1.6, 0.5, 1.2); trailPts.length = 0;
@@ -321,18 +345,6 @@ let prev = performance.now();
     aVel.position.copy(par.position);
     if (parVel.lengthSq() > 1e-12) aVel.setDirection(parVel.clone().normalize());
     aVel.setLength(0.5 + Math.min(1.5, S.v / 1e6));
-  } else {
-    // sem campo: retilíneo
-    if (S.v > 0) {
-      const step = Math.min(2.2, S.v / 1e6) * dt * 1.5;
-      if (parVel.lengthSq() > 1e-12) par.position.addScaledVector(parVel.clone().normalize(), step);
-      if (Math.abs(par.position.x) > 7 || Math.abs(par.position.z) > 6) par.position.set(1.6, 0.5, 1.2);
-      trailPts.push(par.position.clone());
-      if (trailPts.length > 120) trailPts.shift();
-      trailGeo.setFromPoints(trailPts);
-      aVel.position.copy(par.position);
-      if (parVel.lengthSq() > 1e-12) aVel.setDirection(parVel.clone().normalize());
-    }
   }
   renderer.render(scene, cam);
 })();
