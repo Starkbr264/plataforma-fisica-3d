@@ -13,9 +13,9 @@
 <nav><a class="tb" href="../../index.html">Hub</a><a class="tb" href="../eletrostatica/index.html">Eletrostática</a><span class="tb act">Magnetismo</span><a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (arraste no 3D)</h3>
-  <div class="kv"><span>┃ fio vertical (centro)</span><b id="lFio">I = 5 A</b></div>
+  <div class="kv"><span><i data-lucide="minus" class="ic"></i> fio vertical (centro)</span><b id="lFio">I = 5 A</b></div>
   <div class="kv"><span><i data-lucide="magnet" class="ic"></i> ímã N/S (arrastável)</span><b id="lIma">dipolo didático</b></div>
-  <div class="kv"><span>◉ partícula +e (arrastável)</span><b id="lPar"> próton</b></div>
+  <div class="kv"><span><i data-lucide="orbit" class="ic"></i> partícula +e (arrastável)</span><b id="lPar"> próton</b></div>
   <div class="kv"><span><i data-lucide="spline" class="ic"></i> bobina (direita)</span><b id="lBob">N = 100</b></div>
   <div class="row"><button class="btn" id="bInd">Indução: aproximar/afastar</button></div>
   <div class="row"><button class="btn" id="bInv">Inverter I</button><button class="btn" id="bZero">I = 0</button></div>
@@ -26,7 +26,6 @@
 <aside id="right" class="glass">
   <h3>Propriedades</h3>
   <label class="ctl">Corrente I (A) <output id="oI">5.0</output><input type="range" id="sI" min="-10" max="10" step="0.1" value="5"/></label>
-  <label class="ctl">Distância r do fio (m) <output id="oR">0.50</output><input type="range" id="sR" min="0.1" max="3" step="0.01" value="0.5"/></label>
   <label class="ctl">N espiras <output id="oN">100</output><input type="range" id="sN" min="1" max="500" step="1" value="100"/></label>
   <label class="ctl">v partícula (×10⁶ m/s) <output id="oV">1.0</output><input type="range" id="sV" min="0" max="5" step="0.05" value="1"/></label>
   <label class="ctl">Ângulo θ v×B / n×B (°) <output id="oT">90</output><input type="range" id="sT" min="0" max="180" step="1" value="90"/></label>
@@ -38,7 +37,8 @@
   <div class="formula"><div id="kPhi"></div><div class="step" id="stepPhi"></div></div>
   <div class="formula"><div id="kEps"></div><div class="step" id="stepEps"></div></div>
   <h3>Resultados SI</h3>
-  <div class="kv"><span>B do fio em r</span><b id="rB">—</b></div>
+  <div class="kv"><span>r medido (partícula–fio)</span><b id="rMed">—</b></div>
+  <div class="kv"><span>B efetivo em r (com sinal)</span><b id="rB">—</b></div>
   <div class="kv"><span>F magnética |q|vB·senθ</span><b id="rF">—</b></div>
   <div class="kv"><span>Raio de Larmor r<sub>L</sub>=mv/|q|B</span><b id="rL">—</b></div>
   <div class="kv"><span>F no fio (L=1 m, B<sub>ext</sub>)</span><b id="rFfio">—</b></div>
@@ -48,14 +48,16 @@
   <div class="row"><button class="btn primary" id="bSave">Salvar</button></div>
   <div id="alert"></div>
 </aside>
-<div id="bottom" class="glass"><h3>Gráfico B × r — cai com 1/r (fio longo)</h3><canvas id="g" width="820" height="130"></canvas></div>
-<div id="hud">Fio longo · B uniforme p/ fluxo · quase-estático · r clamp ≥ 0,1 m</div>
+<div id="bottom" class="glass"><h3>Φ(t) e ε(t) ao vivo — arraste o ímã</h3><canvas id="g" width="820" height="110"></canvas><canvas id="g2" width="820" height="110"></canvas></div>
+<div id="hud">Fio longo · B uniforme p/ fluxo · quase-estático · r medido (partícula–fio), clamp ≥ 0,1 m</div>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>(function(){var e=[];if(!window.THREE)e.push('Three.js (CDN) não carregou — verifique a internet.');if(!window.katex)e.push('KaTeX (CDN) não carregou — fórmulas podem não renderizar.');if(e.length){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO de CDN: '+e.join(' ');document.body.appendChild(d);}})();</script>
 <script src="app.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>

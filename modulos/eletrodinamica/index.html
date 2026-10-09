@@ -15,20 +15,21 @@
 <aside id="left" class="glass">
   <h3>Peças (circuito na bancada)</h3>
   <div class="kv"><span><i data-lucide="battery-charging" class="ic"></i> Bateria</span><b id="lBat">12 V</b></div>
-  <div class="kv"><span>▬ R₁ (cilindro)</span><b id="lR1">100 Ω</b></div>
-  <div class="kv"><span>▬ R₂ (cilindro)</span><b id="lR2">100 Ω</b></div>
+  <div class="kv"><span><i data-lucide="minus" class="ic"></i> R₁ (cilindro)</span><b id="lR1">100 Ω</b></div>
+  <div class="kv"><span><i data-lucide="minus" class="ic"></i> R₂ (cilindro)</span><b id="lR2">100 Ω</b></div>
   <div class="kv"><span><i data-lucide="lightbulb" class="ic"></i> Lâmpada</span><b id="lLamp">brilho ∝ P</b></div>
   <div class="kv"><span><i data-lucide="power" class="ic"></i> Interruptor</span><b id="lSw">fechada</b></div>
-  <div class="kv"><span>▮ Capacitor</span><b id="lCap">1000 µF</b></div>
+  <div class="kv"><span><i data-lucide="box" class="ic"></i> Capacitor</span><b id="lCap">1000 µF</b></div>
   <div class="row"><button class="btn primary" id="bSerie">Preset série</button><button class="btn primary" id="bPar">Preset paralelo</button></div>
-  <div class="warn">Partículas amarelas = corrente convencional (+ → −). Velocidade ∝ I. Chave aberta = circuito parado.</div>
+  <div class="row"><button class="btn" id="bOhm">Preset 12V+6Ω</button><button class="btn" id="bWires">Limpar fios</button></div>
+  <div class="warn"><i data-lucide="plug" class="ic"></i> Clique num terminal e depois noutro para ligar um fio; clique num terminal ligado para desligar. A topologia dos fios é a origem do cálculo. Capacitor fixo nos terminais da bateria (carga RC temporal). Lâmpada = indicador de P total.</div>
 </aside>
 <aside id="right" class="glass">
   <h3>Propriedades</h3>
   <label class="ctl">Tensão U (V) <output id="oU">12</output><input type="range" id="sU" min="1" max="24" step="0.5" value="12"/></label>
   <label class="ctl">R₁ (Ω) <output id="oR1">100</output><input type="range" id="sR1" min="1" max="1000" step="1" value="100"/></label>
   <label class="ctl">R₂ (Ω) <output id="oR2">100</output><input type="range" id="sR2" min="1" max="1000" step="1" value="100"/></label>
-  <label class="ctl">Modo <output id="oModo">série</output><span class="row"><button class="btn" id="bModoS">Série</button><button class="btn" id="bModoP">Paralelo</button></span></label>
+  <label class="ctl">Modo <output id="oModo">—</output><span class="row"><button class="btn" id="bModoS">Fiar série</button><button class="btn" id="bModoP">Fiar paralelo</button></span></label>
   <label class="ctl"><input type="checkbox" id="cSw" style="width:auto" checked/> chave fechada (circuito ligado)</label>
   <label class="ctl">C capacitor (µF) <output id="oC">1000</output><input type="range" id="sC" min="10" max="10000" step="10" value="1000"/></label>
   <div class="row"><button class="btn" id="bResetC">Descarregar capacitor</button><button class="btn primary" id="bSave">Salvar</button></div>
@@ -39,22 +40,27 @@
   <div class="formula"><div id="kCap"></div><div class="step" id="stepCap"></div></div>
   <h3>Resultados SI</h3>
   <div class="kv"><span>Req</span><b id="rReq">—</b></div>
+  <div class="kv"><span>Topologia detectada</span><b id="rTopo">—</b></div>
   <div class="kv"><span>Corrente I</span><b id="rI">—</b></div>
   <div class="kv"><span>P total</span><b id="rP">—</b></div>
   <div class="kv"><span>P₁ / P₂</span><b id="rP12">—</b></div>
   <div class="kv"><span>Brilho lâmpada</span><b id="rBr">—</b></div>
-  <div class="kv"><span>Q capacitor</span><b id="rQ">—</b></div>
-  <div class="kv"><span>E capacitor</span><b id="rE">—</b></div>
+  <div class="kv"><span>Vc capacitor (t)</span><b id="rVc">—</b></div>
+  <div class="kv"><span>Q capacitor (t)</span><b id="rQ">—</b></div>
+  <div class="kv"><span>E capacitor (t)</span><b id="rE">—</b></div>
+  <div class="kv"><span>I transitória Ic(t)</span><b id="rIc">—</b></div>
   <div id="alert"></div>
 </aside>
 <div id="bottom" class="glass"><h3>Capacitor Q × t — carga Q(t) = CU(1 − e^(−t/RC)) · ponto = agora</h3><canvas id="g" width="820" height="130"></canvas></div>
 <div id="hud">Lei de Ohm validada · curto (R≈0) bloqueado · fios e fonte ideais</div>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>(function(){var e=[];if(!window.THREE)e.push('Three.js (CDN) não carregou — verifique a internet.');if(!window.katex)e.push('KaTeX (CDN) não carregou — fórmulas podem não renderizar.');if(e.length){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO de CDN: '+e.join(' ');document.body.appendChild(d);}})();</script>
 <script src="app.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>

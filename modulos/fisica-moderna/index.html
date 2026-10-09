@@ -15,7 +15,7 @@
 <aside id="left" class="glass">
   <h3>Peças (cena 3D)</h3>
   <div class="kv"><span><i data-lucide="flashlight" class="ic"></i> fonte de luz</span><b>fótons roxos</b></div>
-  <div class="kv"><span>▬ metal</span><b id="lMetal">φ = 2.3 eV</b></div>
+  <div class="kv"><span><i data-lucide="minus" class="ic"></i> metal</span><b id="lMetal">φ = 2.3 eV</b></div>
   <div class="kv"><span><i data-lucide="atom" class="ic"></i> átomo H (Bohr)</span><b id="lBohr">n = 2</b></div>
   <div class="kv"><span><i data-lucide="radiation" class="ic"></i> amostra radioativa</span><b id="lRadio">48 núcleos</b></div>
   <h3>Presets</h3>
@@ -57,11 +57,13 @@
 <div id="bottom" class="glass"><h3 id="gTitle">Gráfico I × f — limiar f₀ (sem emissão abaixo de f₀)</h3><canvas id="g" width="820" height="130"></canvas></div>
 <div id="hud">Fotoelétrico + Bohr + decaimento via window.FIS · Bohr só hidrogenoides</div>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>(function(){var e=[];if(!window.THREE)e.push('Three.js (CDN) não carregou — verifique a internet.');if(!window.katex)e.push('KaTeX (CDN) não carregou — fórmulas podem não renderizar.');if(e.length){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO de CDN: '+e.join(' ');document.body.appendChild(d);}})();</script>
 <script src="app.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>

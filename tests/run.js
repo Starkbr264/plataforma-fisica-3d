@@ -56,5 +56,32 @@ let threw = false;
 try { F.coulomb(1e-6, 1e-6, 0); } catch { threw = true; }
 t('r=0 rejeitado', threw, '');
 
+// RC temporal coerente (mesmo integrador do módulo: Vc+=(U-Vc)(1-e^-dt/τ))
+(function () {
+  const U = 12, Req = 1000, Ccap = 1e-3, tau = Req * Ccap, dt = .02;
+  let Vc = 0;
+  for (let t = 0; t < tau; t += dt) Vc += (U - Vc) * (1 - Math.exp(-dt / tau));
+  t('RC Vc(τ)=U(1-1/e)', near(Vc, U * (1 - 1 / Math.E), .005), Vc);
+  t('RC Q=C·Vc', near(Ccap * Vc, Ccap * U * (1 - 1 / Math.E), .005), '');
+  t('RC Ic=(U-Vc)/Req > 0 durante carga', (U - Vc) / Req > 0, '');
+})();
+
+// Carnot separado do rendimento do ciclo
+t('carnot 600/300 = 0.5', near(F.carnot(600, 300), .5, 1e-12), '');
+t('ciclo W/Q distingue de Carnot', near(F.rendimento(200, 1000), .2, 1e-12) && Math.abs(F.rendimento(200, 1000) - F.carnot(600, 300)) > 1e-9, '');
+threw = false;
+try { F.carnot(300, 600); } catch { threw = true; }
+t('carnot exige Th>Tc', threw, '');
+
+// adiabática reversível (gás monoatômico, γ=5/3)
+t('adiabT comprime 2x aquece', near(F.adiabT(300, 2e-3, 1e-3), 300 * Math.pow(2, 2 / 3), 1e-9), '');
+t('adiabP comprime 2x', near(F.adiabP(1e5, 2e-3, 1e-3), 1e5 * Math.pow(2, 5 / 3), 1e-9), '');
+
+// Larmor com massa correta por partícula
+(function () {
+  const rL = (m) => m * 1e6 / (1.602e-19 * 1e-3);
+  t('rL eletron ~1836x menor que proton', near(rL(F.C.mp) / rL(F.C.me), F.C.mp / F.C.me, 1e-9) && rL(F.C.me) < 0.01, rL(F.C.me));
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

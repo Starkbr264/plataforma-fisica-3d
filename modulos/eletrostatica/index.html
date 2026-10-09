@@ -22,6 +22,7 @@
   <div id="chargeList" style="display:flex;flex-direction:column;gap:5px"></div>
   <label class="ctl"><input type="checkbox" id="cRes" style="width:auto" checked/> setas de força resultante</label>
   <label class="ctl"><input type="checkbox" id="cField" style="width:auto" checked/> linhas de campo</label>
+  <label class="ctl"><input type="checkbox" id="cEqui" style="width:auto"/> equipotenciais</label>
   <label class="ctl"><input type="checkbox" id="cProva" style="width:auto" checked/> carga de prova (E, V)</label>
   <div class="warn"><i data-lucide="move-3d" class="ic"></i> Arraste esferas no 3D. Fundo: órbita · scroll: zoom.</div>
 </aside>
@@ -46,14 +47,16 @@
   <div class="row"><button class="btn primary" id="bSave"><i data-lucide="save" class="ic"></i> Salvar</button></div>
   <div id="alert"></div>
 </aside>
-<div id="bottom" class="glass"><h3>Gráfico F × r — par (selecionada × vizinha mais próxima)</h3><canvas id="g" width="820" height="130"></canvas></div>
-<div id="hud">Superposição vetorial · puntiformes no vácuo · r mínimo 0,05 m · preset: +2µC/−3µC a 0,30 m = 0,599 N</div>
+<div id="bottom" class="glass"><h3 id="gTitle">Gráfico F × r — par (selecionada × vizinha mais próxima)</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="hud">Superposição vetorial · puntiformes no vácuo · r mín 0,05 m · preset: +2µC/−3µC a 0,30 m = 0,599 N</div>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>(function(){var e=[];if(!window.THREE)e.push('Three.js (CDN) não carregou — verifique a internet.');if(!window.katex)e.push('KaTeX (CDN) não carregou — fórmulas podem não renderizar.');if(e.length){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO de CDN: '+e.join(' ');document.body.appendChild(d);}})();</script>
 <script src="app.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>

@@ -14,12 +14,13 @@
 <a class="tb" href="../livre/index.html">Livre</a></nav></div>
 <aside id="left" class="glass">
   <h3>Peças (arraste no 3D)</h3>
-  <div class="kv"><span>◉ cilindro + pistão</span><b id="lVol">2,00 L</b></div>
+  <div class="kv"><span><i data-lucide="cylinder" class="ic"></i> cilindro + pistão</span><b id="lVol">2,00 L</b></div>
   <div class="kv"><span><i data-lucide="flame" class="ic"></i> queimador / <i data-lucide="snowflake" class="ic"></i> resfriador</span><b id="lModo">isobárico</b></div>
-  <div class="kv"><span>● N partículas</span><b>~120</b></div>
+  <div class="kv"><span><i data-lucide="atom" class="ic"></i> N partículas</span><b>~120</b></div>
   <button class="btn" id="bIsoT">Preset: isoterma (T const)</button>
   <button class="btn" id="bIsoP">Preset: isobárica (P const)</button>
   <button class="btn" id="bIsoV">Preset: isocórica (V const)</button>
+  <button class="btn" id="bIsoA">Preset: adiabática (Q = 0, γ = 5/3)</button>
   <div class="row"><button class="btn" id="bAquecer"><i data-lucide="flame" class="ic"></i> +20 K</button><button class="btn" id="bResfriar"><i data-lucide="snowflake" class="ic"></i> −20 K</button></div>
   <div class="warn">Arraste o pistão (disco) para mudar V. Órbita: arrastar no fundo · zoom: scroll. Velocidade das partículas ∝ √T, cor azul→vermelho com T.</div>
 </aside>
@@ -32,6 +33,7 @@
     <option value="isobarico" selected>isobárico (P const)</option>
     <option value="isotermico">isotérmico (T const)</option>
     <option value="isocorico">isocórico (V const)</option>
+    <option value="adiabatico">adiabático (Q = 0, γ = 5/3)</option>
     <option value="livre">livre (P resolvida)</option>
   </select></label>
   <h3>Fórmulas (KaTeX + passo a passo)</h3>
@@ -47,18 +49,22 @@
   <div class="kv"><span>Energia interna U</span><b id="rU">—</b></div>
   <div class="kv"><span>Trabalho W (pelo gás)</span><b id="rW">—</b></div>
   <div class="kv"><span>Calor Q (1ª lei)</span><b id="rQ">—</b></div>
+  <div class="kv"><span>η do ciclo = W/Qq</span><b id="rEta">—</b></div>
+  <div class="kv"><span>η Carnot = 1−Tc/Th (faixa do ciclo)</span><b id="rCarnot">—</b></div>
   <div class="kv"><span>Transformação</span><b id="rClasse">—</b></div>
   <div class="row"><button class="btn" id="bReset">Resetar W/Q</button><button class="btn primary" id="bSave">Salvar</button></div>
   <div id="alert"></div>
 </aside>
-<div id="bottom" class="glass"><h3>Diagrama P–V — área hachurada = W</h3><canvas id="g" width="820" height="130"></canvas></div>
+<div id="bottom" class="glass"><h3>Diagrama P–V — área hachurada = W · verde = adiabática atual · tracejado = isotérmica (T atual)</h3><canvas id="g" width="820" height="130"></canvas></div>
 <div id="hud">Gás ideal monoatômico · quase-estático · W pelo gás</div>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script>(function(){var e=[];if(!window.THREE)e.push('Three.js (CDN) não carregou — verifique a internet.');if(!window.katex)e.push('KaTeX (CDN) não carregou — fórmulas podem não renderizar.');if(e.length){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO de CDN: '+e.join(' ');document.body.appendChild(d);}})();</script>
 <script src="app.js"></script>
-<script>if(window.lucide)lucide.createIcons();</script>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>

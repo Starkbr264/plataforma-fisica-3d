@@ -1,27 +1,12 @@
-# Eletrodinâmica 3D — Circuitos (série / paralelo)
+# Eletrodinâmica — construtor de circuitos (etapa 1)
 
-## Funções (window.FIS, motor `js/core.js`)
-- `ohm(U, R)` → `{ U, R, I }` com `I = U/R`; lança erro se `R ≤ 0`.
-- `serie([R1, R2])` → `R1 + R2`.
-- `paralelo([R1, R2])` → `(1/R1 + 1/R2)⁻¹`.
-- `pot(U, I)` → `U·I`; `potRI(R, I)` → `R·I²`.
-- `capQ(C, U)` → `C·U`; `capE(C, U)` → `C·U²/2`.
-
-## Fórmulas
-- Lei de Ohm: `U = R·I`, `I = U/Req`.
-- Série: `Req = R1 + R2` (mesma corrente, tensões somam).
-- Paralelo: `1/Req = 1/R1 + 1/R2` (mesma tensão, correntes somam).
-- Potência: `P = U·I = R·I²` (série por resistor) ou `P = U²/R` (paralelo).
-- Capacitor: `Q = C·U`, `E = C·U²/2`, carga `Q(t) = C·U·(1 − e^(−t/RC))` com `τ = Req·C`.
-- Brilho da lâmpada 3D: `emissiveIntensity ∝ P total` (normalizado em 50 W).
+## O que faz
+- **Terminais clicáveis** (BP, BN, R1a/b, R2a/b, SWa/b): clique em 2 p/ fiar, clique em terminal ligado p/ desligar, botão Limpar fios.
+- **Solver topológico real**: enumera caminhos BP→BN, reduz tronco comum + ramos paralelos, detecta aberto/curto/misto-não-suportado. A topologia dos fios é a origem do cálculo (Req, I por ramo, P).
+- **Presets**: série (12V 4+4 → 1,5A), paralelo (12V 100‖100 → 50Ω), **12V+6Ω → 2A/24W** (valida §10.4).
+- **Capacitor RC temporal coerente**: estado Vc(t) integrado por `Vc+=(U−Vc)(1−e^(−dt/τ))`, τ=Req·C; números (Vc, Q=C·Vc, E, Ic=(U−Vc)/Req), opacidade das placas e trilha do gráfico Q×t vêm do MESMO estado. Chave aberta/circuito aberto = Vc mantido (isolado).
+- **Partículas** de corrente seguem o caminho resolvido (velocidade ∝ I).
+- Cálculo pesado só em mudança de parâmetro (dirty flag); loop só integra RC + visual.
 
 ## Hipóteses
-- Resistores ôhmicos (R constante, sem aquecimento).
-- Fios e fonte ideais (resistência interna nula).
-- Capacitor ideal, sem fuga; chave ideal (0/∞ Ω).
-- Regime quase-estacionário; partículas mostram sentido convencional (+ → −).
-
-## Teste
-- Preset série: `U = 12 V`, `R1 = R2 = 4 Ω` em série → `Req = 8 Ω` → `I = 12/8 = 1,5 A`, `P = 18 W`, `P1 = P2 = 9 W`.
-- Paralelo: `12 V`, `100 Ω ∥ 100 Ω` → `Req = 50 Ω` → `I = 0,24 A`.
-- Curto (`R < 1 Ω`) e `R ≤ 0`: bloqueados com aviso na interface.
+Fios/fonte ideais; resistores ôhmicos; lâmpada = indicador de P total (fora do grafo); capacitor fixo nos terminais da bateria (ramo próprio, documentado no painel); chave = aresta que abre/fecha.

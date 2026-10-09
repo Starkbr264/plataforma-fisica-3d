@@ -18,13 +18,14 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on
 // --- cena ---
 const cv = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-renderer.setPixelRatio(devicePixelRatio);
-function size() { renderer.setSize(innerWidth, innerHeight); }
-size(); addEventListener('resize', size);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+function size() { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); }
+addEventListener('resize', size);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070b14);
 const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, .1, 200);
 cam.position.set(0, 4.6, 10.5);
+size();
 const ctl = new THREE.OrbitControls(cam, renderer.domElement);
 ctl.enableDamping = true;
 ctl.target.set(0, 1, 0);
@@ -159,12 +160,9 @@ function calc() {
     $('oNi').textContent = S.ni; $('oNf').textContent = S.nf;
     $('oLam').textContent = S.lam.toFixed(3); $('oT').textContent = S.t.toFixed(0);
 
-    // pastilhas visíveis ∝ N
+    // pastilhas visíveis ∝ N (só em mudança de parâmetro; o brilho pulsante é animado no loop)
     const vis = Math.round(N);
-    pellets.forEach((p, i) => {
-      p.visible = i < vis;
-      p.material.emissiveIntensity = .4 + .3 * Math.sin(performance.now() / 400 + i);
-    });
+    pellets.forEach((p, i) => { p.visible = i < vis; });
     drawGraph({ f0, N });
     return { E, lam, f0, Kmax, emite: r.emite, dE, lamBohr, N, T12 };
   } catch (e) { alert.innerHTML = `<div class="err">${e.message}</div>`; return null; }
@@ -217,20 +215,22 @@ function drawGraph(info) {
   }
 }
 
-// --- UI ---
-sF.oninput = () => { S.f = Math.pow(10, +sF.value); calc(); };
-sPhi.oninput = () => { S.phi = +sPhi.value; calc(); };
-sNi.oninput = () => { S.ni = +sNi.value; calc(); };
-sNf.oninput = () => { S.nf = +sNf.value; calc(); };
-sLam.oninput = () => { S.lam = +sLam.value; calc(); };
-sT.oninput = () => { S.t = +sT.value; calc(); };
-$('bFoto').onclick = () => { S.gmode = 'foto'; calc(); };
-$('bDec').onclick = () => { S.gmode = 'decaimento'; calc(); };
-$('bNa').onclick = () => { S.phi = 2.3; S.f = 1e15; sPhi.value = 2.3; sF.value = 15; calc(); toast('Na: emite, K≈1.8 eV'); };
-$('bZn').onclick = () => { S.phi = 4.3; sPhi.value = 4.3; calc(); toast('Zn φ=4.3 eV: emissão cortada'); };
-$('bLyman').onclick = () => { S.ni = 2; S.nf = 1; sNi.value = 2; sNf.value = 1; calc(); $('bTrans').click(); };
-$('bBalmer').onclick = () => { S.ni = 2; S.nf = 3; sNi.value = 2; sNf.value = 3; calc(); $('bTrans').click(); };
-$('bResetT').onclick = () => { S.t = 0; sT.value = 0; calc(); toast('Tempo zerado: N=N₀'); };
+// --- UI (calc + gráfico SÓ em mudança de parâmetro; o loop usa cache) ---
+let dirty = true;
+function recalc() { const r = calc(); dirty = false; return r; }
+sF.oninput = () => { S.f = Math.pow(10, +sF.value); dirty = true; recalc(); };
+sPhi.oninput = () => { S.phi = +sPhi.value; dirty = true; recalc(); };
+sNi.oninput = () => { S.ni = +sNi.value; dirty = true; recalc(); };
+sNf.oninput = () => { S.nf = +sNf.value; dirty = true; recalc(); };
+sLam.oninput = () => { S.lam = +sLam.value; dirty = true; recalc(); };
+sT.oninput = () => { S.t = +sT.value; dirty = true; recalc(); };
+$('bFoto').onclick = () => { S.gmode = 'foto'; dirty = true; recalc(); };
+$('bDec').onclick = () => { S.gmode = 'decaimento'; dirty = true; recalc(); };
+$('bNa').onclick = () => { S.phi = 2.3; S.f = 1e15; sPhi.value = 2.3; sF.value = 15; dirty = true; recalc(); toast('Na: emite, K≈1.8 eV'); };
+$('bZn').onclick = () => { S.phi = 4.3; sPhi.value = 4.3; dirty = true; recalc(); toast('Zn φ=4.3 eV: emissão cortada'); };
+$('bLyman').onclick = () => { S.ni = 2; S.nf = 1; sNi.value = 2; sNf.value = 1; dirty = true; recalc(); $('bTrans').click(); };
+$('bBalmer').onclick = () => { S.ni = 2; S.nf = 3; sNi.value = 2; sNf.value = 3; dirty = true; recalc(); $('bTrans').click(); };
+$('bResetT').onclick = () => { S.t = 0; sT.value = 0; dirty = true; recalc(); toast('Tempo zerado: N=N₀'); };
 $('bSave').onclick = () => { store.save('fisica-moderna', S); toast('Salvo (Modo Livre consegue carregar)'); };
 
 // --- loop ---
@@ -238,9 +238,11 @@ let last = performance.now() / 1000, bohrAng = 0;
 (function loop() {
   requestAnimationFrame(loop); ctl.update();
   const now = performance.now() / 1000, dt = Math.min(.05, now - last); last = now;
-  const st = calc._last || (calc._last = calc());
-  const cur = calc(); // recalcula barato; mantém cena sincronizada
-  const info = cur || st; calc._last = info;
+  // calc()/drawGraph SÓ em mudança de parâmetro (dirty); senão usa cache (transição é só visual)
+  if (dirty || !calc._last) { calc._last = calc(); dirty = false; }
+  const info = calc._last;
+  // brilho pulsante das pastilhas (barato, só visual — não recalcula física)
+  pellets.forEach((p, i) => { p.material.emissiveIntensity = .4 + .3 * Math.sin(performance.now() / 400 + i); });
   const col = freqColor(S.f);
 
   // fótons: fonte -> placa
@@ -278,7 +280,7 @@ let last = performance.now() / 1000, bohrAng = 0;
     flash.visible = true;
     flash.position.set(Math.cos(-bohrAng) * (rNow + .35), 0, Math.sin(-bohrAng) * (rNow + .35));
     flash.material.color.copy(freqColor(C.h * C.c / Math.max(1e-9, info ? info.lamBohr : 5e-7)));
-    if (u >= 1) { S.ni = S.nf; sNi.value = S.ni; trans = null; flash.visible = false; calc(); }
+    if (u >= 1) { S.ni = S.nf; sNi.value = S.ni; trans = null; flash.visible = false; dirty = true; recalc(); }
   }
   eBohr.position.set(Math.cos(bohrAng) * rNow, 0, Math.sin(bohrAng) * rNow);
   rings.forEach((rg, i) => { rg.material.opacity = 1; });
@@ -289,4 +291,4 @@ let last = performance.now() / 1000, bohrAng = 0;
 
   renderer.render(scene, cam);
 })();
-calc();
+calc._last = calc(); dirty = false;

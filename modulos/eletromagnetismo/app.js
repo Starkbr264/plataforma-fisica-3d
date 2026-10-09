@@ -1,6 +1,3 @@
-
-
-
 const { C, Bfio, Fmag, Ffio, fluxo, fem, fmt, store } = window.FIS;
 
 katex.render("B = \\dfrac{\\mu_0 I}{2\\pi r}", document.getElementById('kB'));
@@ -9,13 +6,17 @@ katex.render("\\Phi = B\\,A\\,\\cos\\theta", document.getElementById('kPhi'));
 katex.render("\\varepsilon = -N\\,\\dfrac{\\Delta\\Phi}{\\Delta t}", document.getElementById('kEps'));
 
 // ---------- estado ----------
-const S = { I: 5, r: 0.5, N: 100, v: 1e6, theta: 90, Bext: 1e-3, qsign: 1 };
-const MP = 1.67262192369e-27;          // massa próton (kg)
+// NOTE: sem slider de distância — r é MEDIDO da posição 3D da partícula ao
+// fio (fonte única de verdade p/ B, F e rL).
+const S = { I: 5, N: 100, v: 1e6, theta: 90, Bext: 1e-3, qsign: 1 };
+const MP = C.mp, ME = C.me; // massas do motor (próton/elétron, kg)
 const COIL_R = 0.6;                    // raio da bobina (m)
 const COIL_A = Math.PI * COIL_R * COIL_R;
 const DIP_M = 0.05;                    // momento dipolo didático (A·m²) — fixo
 const $ = (id) => document.getElementById(id);
 function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
+function massaPart() { return S.qsign > 0 ? MP : ME; }
+function nomePart() { return S.qsign > 0 ? '+e (próton)' : '−e (elétron)'; }
 
 // B didático de dipolo no eixo: B ≈ (μ0/4π)(2m/d³), clamp p/ não divergir
 function Bdipolo(d) {
@@ -137,142 +138,190 @@ buildCoil();
 const indArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(3.2, 2.3, 0), 0.9, 0xffcf4d, 0.25, 0.15);
 scene.add(indArrow);
 
-// ---------- cálculo + UI ----------
+// ---------- campo: fonte única + convenção de sinal ----------
+// r MEDIDO: distância radial da partícula ao fio (eixo Y), clamp ≥ 0,1 m.
+// B, F e rL usam este r — não há slider de distância.
+function rMed() { return Math.max(0.1, Math.hypot(par.position.x, par.position.z)); }
+// Convenção didática: o campo do fio é tratado como escalar COM SINAL,
+// perpendicular ao plano XZ, i.e. B_vec = (0, B_eff, 0), com:
+//   B_eff = sign(I) · Bfio(|I|, r) + Bext
+// (FIS.Bfio devolve o módulo μ₀|I|/2πr; o sinal da corrente entra aqui,
+//  logo inverter I inverte B_eff e o sentido do giro da partícula.)
+function campoEfetivo(r) {
+  const Bw = S.I === 0 ? 0 : Math.sign(S.I) * Bfio(Math.abs(S.I), r);
+  return { Bw, Beff: Bw + S.Bext };
+}
+// fluxo atual na bobina (B do ímã na posição da bobina + Bext)
+function phiBobina() {
+  const dIma = ima.position.distanceTo(coilGrp.position);
+  const Bcoil = Bdipolo(dIma) + S.Bext;
+  return { Phi: fluxo(Bcoil, COIL_A, S.theta), Bcoil, dIma };
+}
+
+// ---------- indução ao vivo: buffers rolantes ----------
+const PHI_MAX = 600;   // pontos no buffer rolante
+const EPS_WIN = 0.3;   // janela da diferença finita (s)
+const phiBuf = [];     // {t, v} — Φ(t) medido a cada quadro
+const epsBuf = [];     // {t, v} — ε(t) ao vivo
 let lastPhi = null, lastEps = null, lastDPhi = null, lastDt = null, lastSentido = '—';
 
+// registra Φ(t) e calcula ε = −N·ΔΦ/Δt por diferença finita da
+// movimentação real do ímã (janela ~0,3 s). Chamado a cada quadro.
+function liveEps(nowS) {
+  const { Phi } = phiBobina();
+  phiBuf.push({ t: nowS, v: Phi });
+  if (phiBuf.length > PHI_MAX) phiBuf.splice(0, phiBuf.length - PHI_MAX);
+  let eps = 0, dPhi = 0, dt = 0;
+  let j = phiBuf.length - 1;
+  while (j > 0 && nowS - phiBuf[j - 1].t <= EPS_WIN) j--;
+  if (phiBuf.length >= 2 && nowS - phiBuf[j].t > 1e-3) {
+    dPhi = Phi - phiBuf[j].v; dt = nowS - phiBuf[j].t;
+    try { eps = fem(S.N, dPhi, dt); } catch { eps = 0; }
+  }
+  lastPhi = Phi; lastDPhi = dPhi; lastDt = dt; lastEps = eps;
+  lastSentido = eps > 0 ? 'anti-horário (visto do ímã)' : eps < 0 ? 'horário (visto do ímã)' : '— (Φ constante)';
+  if (eps !== 0) indArrow.setDirection(new THREE.Vector3(eps > 0 ? 1 : -1, 0, 0));
+  epsBuf.push({ t: nowS, v: eps });
+  if (epsBuf.length > PHI_MAX) epsBuf.splice(0, epsBuf.length - PHI_MAX);
+}
+
+// ---------- cálculo + UI ----------
 function calc() {
   const alert = $('alert'); alert.innerHTML = '';
   try {
-    const B = Bfio(S.I, S.r);
+    const r = rMed();
+    const { Bw, Beff } = campoEfetivo(r);
+    const Bmag = Math.abs(Beff);
     const q = S.qsign * C.e;
-    const F = Fmag(q, S.v, B + S.Bext, S.theta);
-    const Btot = B + S.Bext;
-    const rL = Math.abs(q) * S.v > 0 && Btot > 0 ? (MP * S.v) / (Math.abs(q) * Btot) : Infinity;
+    const F = Fmag(q, S.v, Bmag, S.theta);
+    const m = massaPart();
+    const rL = Math.abs(q) * S.v > 0 && Bmag > 0 ? (m * S.v) / (Math.abs(q) * Bmag) : Infinity;
     const Ff = Ffio(S.Bext, S.I, 1, 90);
-    // fluxo na bobina: B do ímã na posição da bobina + Bext, θ = slider
-    const dIma = ima.position.distanceTo(coilGrp.position);
-    const Bcoil = Bdipolo(dIma) + S.Bext;
-    const Phi = fluxo(Bcoil, COIL_A, S.theta);
+    const { Phi, Bcoil, dIma } = phiBobina();
+    // F_vec = q·(v × B), com v_vec = S.v·parVel e B_vec = (0, Beff, 0):
+    // v×B = (−vz·Beff, 0, vx·Beff)
+    const vv = parVel.clone().normalize().multiplyScalar(S.v);
+    const Fx = q * (-vv.z * Beff), Fz = q * (vv.x * Beff);
 
-    $('rB').textContent = fmt(B) + ' T';
+    $('rMed').textContent = r.toFixed(2) + ' m (medido)';
+    $('rB').textContent = fmt(Beff) + ' T';
     $('rF').textContent = fmt(F) + ' N';
     $('rL').textContent = !isFinite(rL) ? '— (B=0 ou v=0)' : fmt(rL) + ' m';
     $('rFfio').textContent = fmt(Ff) + ' N (L=1 m)';
     $('rPhi').textContent = fmt(Phi) + ' Wb';
-    if (lastEps == null) { $('rEps').textContent = '— (aperte Indução)'; $('rLenz').textContent = '—'; }
-    else { $('rEps').textContent = fmt(lastEps) + ' V'; $('rLenz').textContent = lastSentido; }
+    if (lastEps == null) { $('rEps').textContent = '— (mova o ímã)'; $('rLenz').textContent = '—'; }
+    else { $('rEps').textContent = fmt(lastEps) + ' V (ao vivo)'; $('rLenz').textContent = lastSentido; }
 
-    const mu = fmt(C.mu0);
-    $('stepB').textContent = `B = μ₀|I|/2πr = (${mu})×${fmt(Math.abs(S.I))}/(2π×${S.r.toFixed(2)})\n  = ${fmt(B)} T`;
-    $('stepF').textContent = `F = |q|vB·senθ = (${fmt(Math.abs(q))})(${fmt(S.v)})(${fmt(Btot)})·sen${S.theta}°\n  = ${fmt(F)} N`;
+    const sI = S.I === 0 ? 0 : Math.sign(S.I);
+    const Bmod = S.I === 0 ? 0 : Bfio(Math.abs(S.I), r);
+    $('stepB').textContent = `B didático ⊥ ao plano: B_eff = sign(I)·μ₀|I|/2πr + Bext; B_vec=(0, B_eff, 0)\n  = (${sI})×${fmt(Bmod)} + ${fmt(S.Bext)}\n  = ${fmt(Beff)} T (B fio=${fmt(Bw)} T, r medido=${r.toFixed(2)} m)`;
+    $('stepF').textContent = `F_vec = q(v×B): q=${fmt(q)} C, v=(${fmt(vv.x)}, 0, ${fmt(vv.z)}) m/s, B_vec=(0, ${fmt(Beff)}, 0) T\n  → F_vec = (${fmt(Fx)}, 0, ${fmt(Fz)}) N; |F| = |q|vB·senθ = ${fmt(F)} N`;
     try {
-      const dp = Math.max(0.1, Math.hypot(par.position.x, par.position.z));
-      const Btp = Bfio(S.I, dp) + S.Bext;
-      const wPhys = Math.abs(q) * Btp / MP; // rad/s real
+      const wPhys = Bmag > 0 ? Math.abs(q) * Bmag / m : 0; // rad/s real
       const slow = wPhys / (2 * Math.PI / T_GYRO_VIS);
-      $('stepF').textContent += `\nTrajetória em câmera lenta ×${fmt(slow)} (1 volta = ${T_GYRO_VIS} s na tela; rL real no painel)`;
+      $('stepF').textContent += `\npartícula ${nomePart()}, m = ${fmt(m)} kg; rL = mv/|q|B = ${!isFinite(rL) ? '— (B=0 ou v=0)' : fmt(rL) + ' m'}`;
+      $('stepF').textContent += Bmag > 0
+        ? `\nTrajetória em câmera lenta ×${fmt(slow)} (1 volta = ${T_GYRO_VIS} s na tela; rL real no painel)`
+        : '\nGiro parado (B_eff = 0)';
     } catch { /* mantém */ }
     $('stepPhi').textContent = `Φ = B·A·cosθ, A=π×${COIL_R}²=${fmt(COIL_A)} m², Bbob=${fmt(Bcoil)} T\n  = ${fmt(Phi)} Wb (d ímã-bobina = ${dIma.toFixed(2)} m)`;
     $('stepEps').textContent = lastEps == null
-      ? 'ε = −N·ΔΦ/Δt — execute a animação de indução p/ medir ΔΦ/Δt.'
-      : `ε = −${S.N}×(${fmt(lastDPhi)})/${lastDt.toFixed(2)} = ${fmt(lastEps)} V → ${lastSentido}`;
+      ? 'ε = −N·ΔΦ/Δt ao vivo (diferença finita, janela ~0,3 s) — arraste o ímã ou use o botão de indução.'
+      : `ε = −N·ΔΦ/Δt ao vivo (janela ~0,3 s): −${S.N}×(${fmt(lastDPhi)})/${(lastDt || 0).toFixed(2)} = ${fmt(lastEps)} V → ${lastSentido}`;
     updateRings();
     drawGraph();
-    return { B, F, Phi };
+    return { B: Beff, F, Phi };
   } catch (e) { alert.innerHTML = `<div class="err">${e.message}</div>`; return null; }
 }
 
-function drawGraph() {
-  const g = $('g'), x = g.getContext('2d');
+// ---------- gráficos rolantes Φ(t) e ε(t) ----------
+function drawRoll(g, buf, color, nome, unidade) {
+  const x = g.getContext('2d');
   x.clearRect(0, 0, g.width, g.height);
-  const rMax = 3, rMin = 0.1;
-  let fMax = 1e-12;
-  try { fMax = Bfio(S.I || 0.001, rMin); } catch { /* mantém */ }
-  x.beginPath();
-  for (let px = 0; px <= g.width; px += 3) {
-    const r = rMin + (rMax - rMin) * px / g.width;
-    let f = 0; try { f = Bfio(Math.abs(S.I), r); } catch { f = 0; }
-    const py = g.height - 12 - (f / fMax) * (g.height - 30);
-    px === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
-  }
-  x.strokeStyle = '#38e0c0'; x.lineWidth = 2; x.stroke();
-  let Bn = 0; try { Bn = Bfio(S.I, S.r); } catch { Bn = 0; }
-  const px = (S.r - rMin) / (rMax - rMin) * g.width;
-  const py = g.height - 12 - ((Bn || 0) / fMax) * (g.height - 30);
-  x.fillStyle = '#ffcf4d'; x.beginPath(); x.arc(px, py, 5, 0, 7); x.fill();
+  x.strokeStyle = '#22314f'; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(0, g.height / 2); x.lineTo(g.width, g.height / 2); x.stroke();
   x.fillStyle = '#93a4cc'; x.font = '11px sans-serif';
-  x.fillText('0,1 m', 4, g.height - 1); x.fillText('3 m', g.width - 24, g.height - 1);
+  x.fillText(nome, 6, 12);
+  if (buf.length < 2) { x.fillText('mova o ímã…', 6, g.height / 2 - 6); return; }
+  let m = 0;
+  for (const p of buf) { const a = Math.abs(p.v); if (a > m) m = a; }
+  if (!(m > 0)) m = 1;
+  x.beginPath();
+  for (let i = 0; i < buf.length; i++) {
+    const px = i / (buf.length - 1) * g.width;
+    const py = g.height / 2 - (buf[i].v / m) * (g.height / 2 - 14);
+    i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+  }
+  x.strokeStyle = color; x.lineWidth = 2; x.stroke();
+  x.fillStyle = '#93a4cc';
+  x.fillText(fmt(buf[buf.length - 1].v) + ' ' + unidade, g.width - 120, 12);
+}
+function drawGraph() {
+  drawRoll($('g'), phiBuf, '#38e0c0', 'Φ(t) rolante', 'Wb');
+  const g2 = $('g2');
+  if (g2) drawRoll(g2, epsBuf, '#ffcf4d', 'ε(t) rolante (janela ~0,3 s)', 'V');
 }
 
 // ---------- controles ----------
 function syncLabels() {
-  $('oI').textContent = S.I.toFixed(1); $('oR').textContent = S.r.toFixed(2);
+  $('oI').textContent = S.I.toFixed(1);
   $('oN').textContent = S.N; $('oV').textContent = (S.v / 1e6).toFixed(2);
   $('oT').textContent = S.theta; $('oB').textContent = (S.Bext * 1e3).toFixed(1);
   $('lFio').textContent = `I = ${S.I.toFixed(1)} A`;
   $('lBob').textContent = `N = ${S.N}`;
 }
 $('sI').oninput = (e) => { S.I = +e.target.value; syncLabels(); calc(); };
-$('sR').oninput = (e) => { S.r = +e.target.value; syncLabels(); calc(); };
-$('sN').oninput = (e) => { S.N = +e.target.value; lastEps = null; buildCoil(); syncLabels(); calc(); };
+$('sN').oninput = (e) => { S.N = +e.target.value; buildCoil(); syncLabels(); calc(); };
 $('sV').oninput = (e) => { S.v = +e.target.value * 1e6; if (S.v <= 0 && parVel.lengthSq() < 1e-12) parVel.set(1, 0, 0); syncLabels(); calc(); };
 $('sT').oninput = (e) => { S.theta = +e.target.value; syncLabels(); calc(); };
 $('sB').oninput = (e) => { S.Bext = +e.target.value * 1e-3; syncLabels(); calc(); };
-$('selQ').onchange = (e) => { S.qsign = +e.target.value; par.material.color.set(S.qsign > 0 ? 0xff5b6e : 0x4da3ff); calc(); };
-$('bInv').onclick = () => { S.I *= -1; $('sI').value = S.I; syncLabels(); calc(); toast('Corrente invertida — anéis trocam de sentido'); };
+$('selQ').onchange = (e) => {
+  S.qsign = +e.target.value;
+  par.material.color.set(S.qsign > 0 ? 0xff5b6e : 0x4da3ff);
+  $('lPar').textContent = S.qsign > 0 ? 'próton' : 'elétron';
+  calc();
+};
+$('bInv').onclick = () => { S.I *= -1; $('sI').value = S.I; syncLabels(); calc(); toast('Corrente invertida — anéis e giro trocam de sentido'); };
 $('bZero').onclick = () => { S.I = 0; $('sI').value = 0; syncLabels(); calc(); };
 $('bPresetFio').onclick = () => {
-  S.I = 5; S.r = 0.1; $('sI').value = 5; $('sR').value = 0.1;
-  syncLabels(); calc(); toast('Preset: I=5 A, r=0,1 m → B=10 µT');
+  S.I = 5; $('sI').value = 5;
+  par.position.set(0.5, 0.5, 0); parVel.set(1, 0, 0); trailPts.length = 0;
+  syncLabels(); calc(); toast('Preset: I=5 A, partícula a r=0,5 m → B=2 µT');
 };
 $('bPresetInd').onclick = () => {
   S.N = 200; S.Bext = 1e-3; S.theta = 0; $('sN').value = 200; $('sB').value = 1; $('sT').value = 0;
-  ima.position.set(-1.2, 0.5, 0); buildCoil(); syncLabels(); calc(); toast('Preset indução: θ=0°, N=200');
+  ima.position.set(-1.2, 0.5, 0); phiBuf.length = 0; epsBuf.length = 0;
+  buildCoil(); syncLabels(); calc(); toast('Preset indução: θ=0°, N=200');
 };
 $('bSave').onclick = () => { store.save('eletromagnetismo', { ...S, ima: ima.position.toArray() }); toast('Salvo (Modo Livre consegue carregar)'); };
 
-// ---------- indução: anima ímã, mede ΔΦ/Δt ----------
+// ---------- indução guiada (preset de movimento; ε medido ao vivo) ----------
 let inducing = false;
 $('bInd').onclick = async () => {
   if (inducing) return; inducing = true;
   const z0 = 2.5, z1 = 0.9, dt = 1.2; // m, m, s (ida)
-  const BcoilOf = (z) => {
-    ima.position.z = z;
-    const d = ima.position.distanceTo(coilGrp.position);
-    return Bdipolo(d) + S.Bext;
-  };
-  // ida: aproxima
-  const Phi0 = fluxo(BcoilOf(z0), COIL_A, S.theta);
+  const moveTo = (z) => { ima.position.z = z; calc(); };
+  // ida: aproxima (o buffer ao vivo mede ΔΦ/Δt durante o movimento)
   const t0 = performance.now();
   await new Promise((res) => {
     (function step() {
       const k = Math.min(1, (performance.now() - t0) / (dt * 1000));
-      BcoilOf(z0 + (z1 - z0) * k); calc();
+      moveTo(z0 + (z1 - z0) * k);
       k < 1 ? requestAnimationFrame(step) : res();
     })();
   });
-  const Phi1 = fluxo(BcoilOf(z1), COIL_A, S.theta);
-  const dPhi = Phi1 - Phi0;
-  const eps = fem(S.N, dPhi, dt);
-  lastPhi = Phi1; lastDPhi = dPhi; lastDt = dt; lastEps = eps;
-  lastSentido = eps > 0 ? 'anti-horário (visto do ímã)' : eps < 0 ? 'horário (visto do ímã)' : 'nula';
-  indArrow.setDirection(new THREE.Vector3(eps >= 0 ? 1 : -1, 0, 0));
-  indArrow.setColor(new THREE.Color(0xffcf4d));
-  calc(); toast(`Indução: ΔΦ=${fmt(dPhi)} Wb, ε=${fmt(eps)} V`);
+  calc(); toast(`Indução (ida): ΔΦ=${fmt(lastDPhi)} Wb, ε=${fmt(lastEps)} V`);
   // volta: afasta (sinal oposto → Lenz visível)
   const t1 = performance.now();
   await new Promise((res) => {
     (function step() {
       const k = Math.min(1, (performance.now() - t1) / (dt * 1000));
-      BcoilOf(z1 + (z0 - z1) * k); calc();
+      moveTo(z1 + (z0 - z1) * k);
       k < 1 ? requestAnimationFrame(step) : res();
     })();
   });
-  const Phi2 = fluxo(BcoilOf(z0), COIL_A, S.theta);
-  lastDPhi = Phi2 - Phi1; lastEps = fem(S.N, lastDPhi, dt); lastPhi = Phi2;
-  lastSentido = lastEps > 0 ? 'anti-horário (visto do ímã)' : 'horário (visto do ímã)';
-  indArrow.setDirection(new THREE.Vector3(lastEps >= 0 ? 1 : -1, 0, 0));
-  calc(); inducing = false;
+  calc(); toast(`Indução (volta): ΔΦ=${fmt(lastDPhi)} Wb, ε=${fmt(lastEps)} V`);
+  inducing = false;
 };
 
 // ---------- arrastar ímã / partícula ----------
@@ -293,17 +342,18 @@ addEventListener('pointermove', (e) => {
   const p = new THREE.Vector3();
   ray.ray.intersectPlane(plane, p);
   p.x = THREE.MathUtils.clamp(p.x, -6, 6); p.z = THREE.MathUtils.clamp(p.z, -5, 5);
-  if (drag === ima) { ima.position.x = p.x; ima.position.z = p.z; lastEps = null; }
+  if (drag === ima) { ima.position.x = p.x; ima.position.z = p.z; }
   else if (drag === par) { par.position.x = p.x; par.position.z = p.z; trailPts.length = 0; }
   calc();
 });
 
 // ---------- loop: particula sob v×B em CAMERA LENTA didatica ----------
-// Fisica real: w=|q|B/m (~1e5 rad/s p/ proton em 1 mT) com rL de metros.
+// Fisica real: w=|q|B/m com rL de metros (w ~1e5 rad/s p/ próton em 1 mT).
 // A 60 fps isso gera aliasing: a seta de velocidade gira varias voltas por
 // quadro ("girando sem sentido"). Solucao padrao de sims didaticos:
 // desacelerar o giro p/ 1 volta a cada T_GYRO_VIS s, preservando o SENTIDO
-// fisico (sinal de q, de B e sen θ) e exibindo o fator de camera lenta.
+// fisico — sign(q)·sign(B_eff)·senθ, logo inverter I inverte o giro —
+// e exibindo o fator de camera lenta.
 const T_GYRO_VIS = 5; // s por volta na tela
 let running = true;
 $('bPlay').onclick = () => {
@@ -318,18 +368,17 @@ function resetPar() {
   trailGeo.setFromPoints(trailPts); calc();
 }
 $('bResetPar').onclick = resetPar;
-let prev = performance.now();
+let prev = performance.now(), lastPanel = 0;
 (function loop() {
   requestAnimationFrame(loop); ctl.update();
   const now = performance.now();
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+  const nowS = now / 1000;
   if (running && S.v > 0) {
-    // B na posição da partícula: fio (dist. radial no XZ) + externo
-    const dist = Math.max(0.1, Math.hypot(par.position.x, par.position.z));
-    let B = 0; try { B = Bfio(S.I, dist); } catch { B = 0; }
-    const Bt = B + S.Bext;
+    // B na posição da partícula: fio (r medido no XZ) com sinal de I + externo
+    const { Beff } = campoEfetivo(rMed());
     const th = S.theta * Math.PI / 180;
-    const wVis = Math.sign(S.qsign) * (Bt >= 0 ? 1 : -1) * Math.sin(th) * 2 * Math.PI / T_GYRO_VIS;
+    const wVis = Math.sign(S.qsign) * (Beff >= 0 ? 1 : -1) * Math.sin(th) * 2 * Math.PI / T_GYRO_VIS;
     const turn = wVis * dt; // ≤ ~0.02 rad/quadro: suave e estavel
     const c = Math.cos(turn), s = Math.sin(turn);
     const vx = parVel.x * c - parVel.z * s, vz = parVel.x * s + parVel.z * c;
@@ -346,6 +395,9 @@ let prev = performance.now();
     if (parVel.lengthSq() > 1e-12) aVel.setDirection(parVel.clone().normalize());
     aVel.setLength(0.5 + Math.min(1.5, S.v / 1e6));
   }
+  liveEps(nowS); // Φ(t) em buffer + ε ao vivo por diferença finita
+  drawGraph();   // Φ(t) e ε(t) rolantes
+  if (nowS - lastPanel > 0.15) { lastPanel = nowS; calc(); } // painel a ~7 Hz
   renderer.render(scene, cam);
 })();
 

@@ -1,7 +1,7 @@
 # Validação — hipóteses e limites
 
 - **Cargas puntiformes, vácuo/ar**: Lei de Coulomb e E/V/U valem p/ puntiformes ou distâncias ≫ tamanho. Meio ≠ vácuo exige ϵ, não implementado — UI avisa.
-- **r>0 obrigatório**: r→0 diverge (F∝1/r²). Módulos clampam r mínimo (0,2 m na cena) e mostram erro se r=0.
+- **r>0 obrigatório**: r→0 diverge (F∝1/r²). Módulos clampam r mínimo (0,05 m na cena) e mostram erro se r=0.
 - **Fio longo (B=μ₀I/2πr)**: só longe das pontas e fora do fio. r mínimo clampado.
 - **Faraday ε=−NΔΦ/Δt**: Φ=BAcosθ só p/ B uniforme e superfície plana. Sinal − = Lenz (corrente opõe-se à variação).
 - **Fotoelétrico**: modelo de elétron livre + φ do material; ignora estrutura de bandas real. Se hf<φ, K=0 e sem emissão (correto).

@@ -32,7 +32,7 @@ Sem build, sem login, sem banco. Só abrir no navegador (precisa de internet p/ 
 - ou direto: `modulos/eletrostatica/index.html`, etc.
 
 Funciona por `file://` + CDN:
-- `three@0.160.0` via jsdelivr (importmap)
+- `three@0.147.0` via jsdelivr (script global, sem importmap)
 - KaTeX via CDN para fórmulas
 - Canvas 2D nativo para gráficos (sem dependência)
 

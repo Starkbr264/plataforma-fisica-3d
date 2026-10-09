@@ -13,7 +13,7 @@ const S = {
     { id: ++seq, q: -3e-6, x: .15, z: 0 },
   ],
   sel: 1, U0: null,
-  showRes: true, showField: true, showProbe: true,
+  showRes: true, showField: true, showProbe: true, showEqui: false,
   probe: { x: 0, z: 1.1, q: 1e-9 },
 };
 const $ = (id) => document.getElementById(id);
@@ -21,42 +21,37 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on
 
 // ---------- cena ----------
 const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
-renderer.setPixelRatio(devicePixelRatio);
-function size() { renderer.setSize(innerWidth, innerHeight); }
-size(); addEventListener('resize', size);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+function size() { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); }
+addEventListener('resize', size);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070b14);
 const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, .1, 200);
 cam.position.set(0, 4.2, 8.5);
+size();
 const ctl = new THREE.OrbitControls(cam, renderer.domElement);
 ctl.enableDamping = true;
 scene.add(new THREE.GridHelper(16, 16, 0x2a3c66, 0x16223c));
 scene.add(new THREE.AmbientLight(0xffffff, .7));
 const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(4, 8, 5); scene.add(dl);
 
-const meshes = new Map(); // id -> {grp, mesh, ring, arrow, lines[]}
+const meshes = new Map(); // id -> {grp, mesh, ring, arrow}
 function makeChargeMesh() {
   const grp = new THREE.Group();
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(.32, 28, 28),
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(.14, 28, 28),
     new THREE.MeshStandardMaterial({ roughness: .3, metalness: .1 }));
   mesh.userData.drag = true; grp.add(mesh);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(.46, .025, 10, 40),
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.2, .012, 10, 40),
     new THREE.MeshBasicMaterial({ color: 0xffffff }));
   ring.rotation.x = Math.PI / 2; grp.add(ring); mesh.userData.ring = ring;
   const lbl = document.createElement('canvas'); lbl.width = 128; lbl.height = 64;
   const tex = new THREE.CanvasTexture(lbl);
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  spr.scale.set(1.3, .65, 1); spr.position.y = .85; grp.add(spr);
+  spr.scale.set(.57, .285, 1); spr.position.y = .37; grp.add(spr);
   const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, 0xffcf4d, .25, .15);
   scene.add(arrow);
-  const lines = [];
-  for (let i = 0; i < 8; i++) {
-    const l = new THREE.Line(new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({ color: 0x5dffb0, transparent: true, opacity: .3 }));
-    scene.add(l); lines.push(l);
-  }
   scene.add(grp);
-  return { grp, mesh, ring, lbl, tex, arrow, lines };
+  return { grp, mesh, ring, lbl, tex, arrow };
 }
 function setLabel(o, txt) {
   const x = o.lbl.getContext('2d');
@@ -72,7 +67,7 @@ scene.add(aE);
 function syncMeshes() {
   for (const [id, o] of meshes) {
     if (!S.charges.some(c => c.id === id)) {
-      scene.remove(o.grp, o.arrow); o.lines.forEach(l => scene.remove(l)); meshes.delete(id);
+      scene.remove(o.grp, o.arrow); meshes.delete(id);
     }
   }
   for (const c of S.charges) {
@@ -86,7 +81,6 @@ function syncMeshes() {
     o.ring.material.color.set(sel ? 0xffffff : col);
     o.grp.scale.setScalar(sel ? 1.18 : 1);
     setLabel(o, c.q >= 0 ? '+' : '−');
-    o.lines.forEach(l => l.visible = S.showField);
     o.arrow.visible = S.showRes;
   }
   prova.visible = S.showProbe;
@@ -128,6 +122,117 @@ function totalU() {
       U += energiaU(S.charges[i].q, S.charges[j].q,
         Math.max(pairR(S.charges[i], S.charges[j]), RMIN));
   return U;
+}
+// ---------- linhas de campo (streamlines do E resultante) + equipotenciais ----------
+const fieldGroup = new THREE.Group(); scene.add(fieldGroup);
+const equiGroup = new THREE.Group(); scene.add(equiGroup);
+function clearGroup(g) {
+  for (let i = g.children.length - 1; i >= 0; i--) {
+    const o = g.children[i]; g.remove(o);
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  }
+}
+function traceLine(sx, sz, dir, seedId, seedSign) {
+  const pts = [new THREE.Vector3(sx, Y, sz)];
+  let x = sx, z = sz;
+  const step = .06;
+  for (let i = 0; i < 220; i++) {
+    const f = fieldAt(x, z);
+    const m = Math.hypot(f.ex, f.ez);
+    if (!isFinite(m) || m <= 0) break;
+    x += dir * f.ex / m * step; z += dir * f.ez / m * step;
+    if (Math.abs(x) > 6 || Math.abs(z) > 5) break;
+    let hit = false;
+    for (const c of S.charges) {
+      if (c.id === seedId) continue;
+      if (c.q * seedSign < 0 && Math.hypot(x - c.x, z - c.z) < .12) { hit = true; break; }
+    }
+    pts.push(new THREE.Vector3(x, Y, z));
+    if (hit) break;
+  }
+  return pts;
+}
+function rebuildField() { // chamada por evento (syncAll), NUNCA por quadro
+  clearGroup(fieldGroup);
+  fieldGroup.visible = S.showField;
+  if (!S.showField || !S.charges.length) return;
+  let sources = S.charges.filter(c => c.q > 0), dir = 1;
+  if (!sources.length) { sources = S.charges.filter(c => c.q < 0); dir = -1; }
+  if (!sources.length) return;
+  for (const c of sources) {
+    const sgn = c.q > 0 ? 1 : -1;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      const pts = traceLine(c.x + Math.cos(a) * .2, c.z + Math.sin(a) * .2, dir, c.id, sgn);
+      if (pts.length < 2) continue;
+      fieldGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({ color: 0x5dffb0, transparent: true, opacity: .5 })));
+    }
+  }
+}
+function logspace(a, b, n) {
+  const out = [], la = Math.log10(a), lb = Math.log10(b);
+  for (let k = 0; k < n; k++) out.push(Math.pow(10, la + (lb - la) * (n === 1 ? 0 : k / (n - 1))));
+  return out;
+}
+function equiLevels(vmin, vmax, n) {
+  if (vmin > 0) return logspace(vmin, vmax, n);
+  if (vmax < 0) return logspace(Math.abs(vmax), Math.abs(vmin), n).map(v => -v).reverse();
+  const amax = Math.max(Math.abs(vmin), Math.abs(vmax));
+  if (!(amax > 0)) return [];
+  const p = logspace(vmax / 1000, vmax * 0.999, Math.ceil(n / 2));
+  const q = logspace(Math.abs(vmin) / 1000, Math.abs(vmin) * 0.999, Math.floor(n / 2));
+  return [...q.map(v => -v).reverse(), ...p].filter(v => v > vmin && v < vmax);
+}
+function rebuildEqui() { // marching squares do V, chamada por evento (syncAll)
+  clearGroup(equiGroup);
+  equiGroup.visible = S.showEqui;
+  if (!S.showEqui || !S.charges.length) return;
+  const NX = 80, NZ = 60, X0 = -4, X1 = 4, Z0 = -3, Z1 = 3;
+  const dx = (X1 - X0) / NX, dz = (Z1 - Z0) / NZ;
+  const vals = new Float64Array((NX + 1) * (NZ + 1));
+  let vmin = Infinity, vmax = -Infinity;
+  for (let j = 0; j <= NZ; j++) {
+    const z = Z0 + dz * j;
+    for (let i = 0; i <= NX; i++) {
+      const V = fieldAt(X0 + dx * i, z).V;
+      let gv = V;
+      if (!isFinite(gv)) gv = 0;
+      if (Math.abs(gv) > 1e6) gv = Math.sign(gv) * 1e6;
+      vals[j * (NX + 1) + i] = gv;
+      if (isFinite(V) && Math.abs(V) <= 1e6) {
+        if (V < vmin) vmin = V;
+        if (V > vmax) vmax = V;
+      }
+    }
+  }
+  if (!(vmax > vmin)) return;
+  const levels = equiLevels(vmin, vmax, 6);
+  if (!levels.length) return;
+  const pos = [];
+  const P = (px, pz) => { pos.push(px, Y, pz); };
+  for (const L of levels) {
+    for (let j = 0; j < NZ; j++) {
+      for (let i = 0; i < NX; i++) {
+        const a = vals[j * (NX + 1) + i], b = vals[j * (NX + 1) + i + 1];
+        const d = vals[(j + 1) * (NX + 1) + i], c = vals[(j + 1) * (NX + 1) + i + 1];
+        const x0 = X0 + dx * i, z0 = Z0 + dz * j;
+        const cp = [];
+        if ((a < L) !== (b < L)) { const t = (L - a) / (b - a); cp.push([x0 + dx * t, z0]); }
+        if ((b < L) !== (c < L)) { const t = (L - b) / (c - b); cp.push([x0 + dx, z0 + dz * t]); }
+        if ((d < L) !== (c < L)) { const t = (L - d) / (c - d); cp.push([x0 + dx * t, z0 + dz]); }
+        if ((a < L) !== (d < L)) { const t = (L - a) / (d - a); cp.push([x0, z0 + dz * t]); }
+        if (cp.length === 2) { P(cp[0][0], cp[0][1]); P(cp[1][0], cp[1][1]); }
+        else if (cp.length === 4) { P(cp[0][0], cp[0][1]); P(cp[1][0], cp[1][1]); P(cp[2][0], cp[2][1]); P(cp[3][0], cp[3][1]); }
+      }
+    }
+  }
+  if (!pos.length) return;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  equiGroup.add(new THREE.LineSegments(g,
+    new THREE.LineBasicMaterial({ color: 0xb78cff, transparent: true, opacity: .6 })));
 }
 const arrowLen = (v) => THREE.MathUtils.clamp(.35 + Math.log10(1 + v) * .85, .35, 3);
 
@@ -188,22 +293,37 @@ function drawGraph(sel, near) {
   const g = $('g'), x = g.getContext('2d');
   x.clearRect(0, 0, g.width, g.height);
   x.fillStyle = '#93a4cc'; x.font = '11px sans-serif';
-  if (!sel || !near) { x.fillText('Selecione uma carga com ao menos 1 vizinha.', 8, 20); return; }
+  const T = $('gTitle');
+  if (!sel || !near) {
+    if (T) T.textContent = 'Gráfico F × r — par (selecionada × vizinha mais próxima)';
+    x.fillText('Selecione uma carga com ao menos 1 vizinha.', 8, 20); return;
+  }
+  if (T) T.textContent = `Gráfico F × r — q${sel.id} × q${near.id} (F = k|q₁q₂|/r²)`;
   const qq = Math.abs(sel.q * near.q), r0 = pairR(sel, near);
-  const rMax = 8, fMax = coulomb(qq || 1e-12, 1, .2);
+  const rMax = 8, fMax = coulomb(qq || 1e-12, 1, RMIN);
+  const f2y = (f) => g.height - 14 - (Math.log10(1 + f) / Math.log10(1 + fMax)) * (g.height - 46);
+  x.fillStyle = '#e8eefc'; x.font = 'bold 12px sans-serif';
+  x.fillText(`F × r — q${sel.id} × q${near.id}`, 8, 14);
+  x.fillStyle = '#93a4cc'; x.font = '11px sans-serif';
+  x.fillText('F (N, escala log)', 8, 28);
   x.beginPath();
   for (let px = 0; px <= g.width; px += 3) {
-    const r = .2 + (rMax - .2) * px / g.width;
+    const r = RMIN + (rMax - RMIN) * px / g.width;
     const f = coulomb(qq, 1, r);
-    const py = g.height - 12 - (Math.log10(1 + f) / Math.log10(1 + fMax)) * (g.height - 30);
+    const py = f2y(f);
     px === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
   }
   x.strokeStyle = '#4da3ff'; x.lineWidth = 2; x.stroke();
-  const f0 = coulomb(qq, 1, Math.max(r0, .2));
-  const px = (Math.max(r0, .2) - .2) / (rMax - .2) * g.width;
-  const py = g.height - 12 - (Math.log10(1 + f0) / Math.log10(1 + fMax)) * (g.height - 30);
+  const rc = Math.max(r0, RMIN);
+  const f0 = coulomb(qq, 1, rc);
+  const px = (rc - RMIN) / (rMax - RMIN) * g.width;
+  const py = f2y(f0);
   x.fillStyle = '#ffcf4d'; x.beginPath(); x.arc(px, py, 5, 0, 7); x.fill();
-  x.fillStyle = '#93a4cc'; x.fillText('0,2 m', 4, g.height - 1); x.fillText(`r atual ${r0.toFixed(2)} m`, px - 30, py - 10); x.fillText('8 m', g.width - 24, g.height - 1);
+  x.fillStyle = '#93a4cc';
+  x.fillText('0,05 m', 4, g.height - 1);
+  x.fillText('r (m)', g.width / 2 - 15, g.height - 1);
+  x.fillText(`r atual ${r0.toFixed(2)} m`, Math.min(Math.max(px - 30, 4), g.width - 110), py - 10);
+  x.fillText('8 m', g.width - 24, g.height - 1);
 }
 
 // ---------- UI ----------
@@ -225,7 +345,7 @@ function refreshList() {
     $('nX').value = sel.x.toFixed(2); $('nZ').value = sel.z.toFixed(2);
   } else { $('oQ').textContent = '—'; }
 }
-function syncAll() { syncMeshes(); refreshList(); calc(); }
+function syncAll() { syncMeshes(); refreshList(); rebuildField(); rebuildEqui(); calc(); }
 function addCharge(q) {
   const a = Math.random() * Math.PI * 2;
   const c = { id: ++seq, q, x: + (Math.cos(a) * 1.8).toFixed(2), z: + (Math.sin(a) * 1.8).toFixed(2) };
@@ -262,6 +382,7 @@ $('nZ').onchange = (e) => {
 };
 $('cRes').onchange = (e) => { S.showRes = e.target.checked; syncAll(); };
 $('cField').onchange = (e) => { S.showField = e.target.checked; syncAll(); };
+$('cEqui').onchange = (e) => { S.showEqui = e.target.checked; syncAll(); };
 $('cProva').onchange = (e) => { S.showProbe = e.target.checked; syncAll(); };
 $('bSave').onclick = () => { store.save('eletrostatica', S); toast('Salvo (Modo Livre consegue carregar)'); };
 
@@ -303,16 +424,6 @@ addEventListener('pointermove', (e) => {
 // ---------- loop ----------
 (function loop() {
   requestAnimationFrame(loop); ctl.update();
-  const t = performance.now() / 1000;
-  for (const c of S.charges) {
-    const o = meshes.get(c.id); if (!o) continue;
-    o.lines.forEach((l, i) => {
-      const a = i / 8 * Math.PI * 2 + t * .2;
-      l.geometry.setFromPoints([
-        new THREE.Vector3(c.x + Math.cos(a) * .42, Y, c.z + Math.sin(a) * .42),
-        new THREE.Vector3(c.x + Math.cos(a) * 1.15, Y, c.z + Math.sin(a) * 1.15)]);
-    });
-  }
   renderer.render(scene, cam);
 })();
 

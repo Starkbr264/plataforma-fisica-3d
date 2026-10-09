@@ -11,6 +11,8 @@ window.FIS = (() => {
     kB: 1.380649e-23,         // J/K
     R: 8.314462618,           // J/(mol·K)
     Na: 6.02214076e23,        // 1/mol
+    mp: 1.67262192369e-27,    // massa do próton (kg)
+    me: 9.1093837015e-31,     // massa do elétron (kg)
     g: 9.80665                // m/s²
   };
 
@@ -66,6 +68,9 @@ window.FIS = (() => {
   function Umono(n, T) { need(n > 0 && T > 0, "n,T > 0"); return 1.5 * n * C.R * T; }
   function Wisobarico(P, dV) { return P * dV; } // W pelo gás
   function rendimento(W, Qq) { need(Qq > 0, "Qq > 0"); return W / Qq; }
+  function carnot(Th, Tc) { need(Th > 0 && Tc > 0, "Th,Tc > 0 K"); need(Th > Tc, "Th deve ser > Tc"); return 1 - Tc / Th; }
+  function adiabT(T0, V0, V1, gamma = 5 / 3) { need(T0 > 0 && V0 > 0 && V1 > 0 && gamma > 1, "domínio inválido"); return T0 * Math.pow(V0 / V1, gamma - 1); }
+  function adiabP(P0, V0, V1, gamma = 5 / 3) { need(P0 > 0 && V0 > 0 && V1 > 0 && gamma > 1, "domínio inválido"); return P0 * Math.pow(V0 / V1, gamma); }
 
   // --- utils ---
   function fmt(x, d = 3) {
@@ -86,7 +91,7 @@ window.FIS = (() => {
     Bfio, Fmag, Ffio, fluxo, fem,
     fotonE, fotonF, fotoeletrico, deBroglie, bohrEn, decaimento, meiavida,
     ohm, serie, paralelo, pot, potRI, capQ, capE,
-    gas, Umono, Wisobarico, rendimento,
+    gas, Umono, Wisobarico, rendimento, carnot, adiabT, adiabP,
     fmt, store
   };
 })();

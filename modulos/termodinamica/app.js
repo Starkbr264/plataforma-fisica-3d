@@ -1,6 +1,7 @@
 
 
-const { C, gas, Umono, Wisobarico, rendimento, fmt, store } = window.FIS;
+const { C, gas, Umono, Wisobarico, rendimento, carnot, adiabT, adiabP, fmt, store } = window.FIS;
+const GAMMA = 5 / 3; // gás ideal monoatômico (hipótese documentada no passo a passo)
 
 if (typeof katex !== 'undefined') {
   katex.render("P V = n R T", document.getElementById('kPV'));
@@ -12,13 +13,14 @@ if (typeof katex !== 'undefined') {
 // ---------- cena ----------
 const cv = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-renderer.setPixelRatio(devicePixelRatio);
-function size() { renderer.setSize(innerWidth, innerHeight); }
-size(); addEventListener('resize', size);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+function size() { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); }
+addEventListener('resize', size);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070b14);
 const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, .1, 200);
 cam.position.set(0.5, 4.4, 9.2);
+size();
 const ctl = new THREE.OrbitControls(cam, renderer.domElement);
 ctl.enableDamping = true;
 scene.add(new THREE.GridHelper(16, 16, 0x2a3c66, 0x16223c));
@@ -64,7 +66,7 @@ const cold = new THREE.Color(0x4da3ff), hot = new THREE.Color(0xff5b6e), tmpC = 
 // ---------- estado ----------
 const L2V = (len) => 0.5 + (len / LMAX) * 3.5;          // L
 const V2L = (vL) => (vL - 0.5) / 3.5 * LMAX;            // comprimento
-const S = { mode: 'isobarico', n: 1, Tset: 300, V_L: 2.0, Plock: null, Vlock: null, W: 0, U0: null, prevV: null, prevP: null, hist: [] };
+const S = { mode: 'isobarico', n: 1, Tset: 300, V_L: 2.0, Plock: null, Vlock: null, W: 0, U0: null, prevV: null, prevP: null, hist: [], Tmax: null, Tmin: null, T0ad: null, V0ad: null, C0: null };
 const $ = (id) => document.getElementById(id);
 const sN = $('sN'), sT = $('sT'), sV = $('sV'), sel = $('selModo');
 function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
@@ -74,11 +76,17 @@ function resolve() {
   const Vm3 = S.V_L * 1e-3;
   if (S.mode === 'isobarico') return gas({ P: S.Plock, V: Vm3, n: S.n, T: null });
   if (S.mode === 'isocorico') return gas({ P: null, V: S.Vlock * 1e-3, n: S.n, T: S.Tset });
+  if (S.mode === 'adiabatico') {
+    // Hipótese: gás ideal monoatômico, γ = 5/3, transformação quase-estática
+    // reversível (sem troca de calor). C0 = T0·V0^(γ−1) travada na entrada do modo.
+    const T = adiabT(S.T0ad, S.V0ad * 1e-3, Vm3, GAMMA);
+    return gas({ P: null, V: Vm3, n: S.n, T });
+  }
   return gas({ P: null, V: Vm3, n: S.n, T: S.Tset }); // isotermico e livre
 }
 
 function classify(dV, dT, W, Q) {
-  const names = { isotermico: 'ISOTÉRMICA (T const)', isobarico: 'ISOBÁRICA (P const)', isocorico: 'ISOCÓRICA (V const)', livre: 'LIVRE' };
+  const names = { isotermico: 'ISOTÉRMICA (T const)', isobarico: 'ISOBÁRICA (P const)', isocorico: 'ISOCÓRICA (V const)', adiabatico: 'ADIABÁTICA (Q=0, γ=5/3)', livre: 'LIVRE' };
   let tags = [names[S.mode]];
   if (S.mode !== 'isocorico') tags.push(dV > 1e-12 ? 'expansão (W>0)' : dV < -1e-12 ? 'compressão (W<0)' : 'V parado');
   if (S.mode !== 'isotermico') tags.push(dT > 1e-9 ? 'aquecido' : dT < -1e-9 ? 'resfriado' : '');
@@ -105,6 +113,9 @@ function calc() {
     } else { S.prevP = P; }
     if (!S.hist.length) S.hist.push({ V, P });
     const dU = U - S.U0, Q = dU + S.W; // 1ª lei, W pelo gás
+    // Faixa de T do ciclo (p/ η Carnot): inicia em T atual, reseta no botão de reset
+    if (S.Tmax == null || S.Tmin == null) { S.Tmax = T; S.Tmin = T; }
+    else { S.Tmax = Math.max(S.Tmax, T); S.Tmin = Math.min(S.Tmin, T); }
     // UI
     $('rP').textContent = fmt(P) + ' Pa';
     $('rV').textContent = fmt(V * 1e3) + ' L (' + fmt(V) + ' m³)';
@@ -113,24 +124,34 @@ function calc() {
     $('rU').textContent = fmt(U) + ' J';
     $('rW').textContent = fmt(S.W) + ' J';
     $('rQ').textContent = fmt(Q) + ' J';
+    // η do ciclo (atual: W/Qq) × η Carnot (limite: 1−Tc/Th da faixa observada)
+    let etaTxt = '— (Qq ≤ 0)';
+    try { etaTxt = fmt(rendimento(Math.max(S.W, 0), Math.max(Q, 1e-12))); }
+    catch { etaTxt = '— (Qq ≤ 0)'; }
+    $('rEta').textContent = etaTxt;
+    $('rCarnot').textContent = (S.Tmax > S.Tmin)
+      ? fmt(carnot(S.Tmax, S.Tmin)) + ` (Th=${fmt(S.Tmax)} K, Tc=${fmt(S.Tmin)} K)`
+      : '— (sem ciclo)';
     $('rClasse').textContent = classify(dV, T - (S._lastT ?? T), S.W, Q);
     S._lastT = T;
     const wIso = Wisobarico(P, dV);
     $('stepPV').textContent = `P = nRT/V = (${fmt(n)}·${C.R}·${fmt(T)})/${fmt(V)}\n  = ${fmt(P)} Pa`;
     $('stepLei').textContent = `ΔU = U−U₀ = ${fmt(U)}−${fmt(S.U0)} = ${fmt(dU)} J\nQ = ΔU+W = ${fmt(dU)}+${fmt(S.W)} = ${fmt(Q)} J`;
     $('stepW').textContent = S.mode === 'isobarico'
-      ? `W = PΔV, passo atual P·ΔV = ${fmt(P)}·${fmt(dV)} = ${fmt(wIso)} J · acumulado ${fmt(S.W)} J`
-      : `W = ∫P dV (trapézio a cada passo) · acumulado ${fmt(S.W)} J · η Carnot p/ Th=${fmt(T)}K, Tc=200K: ${fmt(rendimento(Math.max(S.W, 0), Math.max(Q, 1e-12)))}`;
-    const modoTxt = { isotermico: 'isotérmico', isobarico: 'isobárico', isocorico: 'isocórico', livre: 'livre' }[S.mode];
+      ? `W = PΔV, passo atual P·ΔV = ${fmt(P)}·${fmt(dV)} = ${fmt(wIso)} J · acumulado ${fmt(S.W)} J\nη do ciclo = W/Qq = ${etaTxt} · η Carnot (faixa Th=${fmt(S.Tmax)}K/Tc=${fmt(S.Tmin)}K) = ${$('rCarnot').textContent}`
+      : S.mode === 'adiabatico'
+      ? `Adiabática reversível, Q=0, gás monoatômico γ=5/3 · C0=T0·V0^(γ−1)=${fmt(S.C0)} K·m³^${fmt(GAMMA - 1)}\nT = C0/V^(γ−1) = ${fmt(T)} K · W acumulado ${fmt(S.W)} J (W = −ΔU, Q=0)\nη do ciclo = W/Qq = ${etaTxt} · η Carnot (faixa Th=${fmt(S.Tmax)}K/Tc=${fmt(S.Tmin)}K) = ${$('rCarnot').textContent}`
+      : `W = ∫P dV (trapézio a cada passo) · acumulado ${fmt(S.W)} J\nη do ciclo = W/Qq = ${etaTxt} · η Carnot (faixa Th=${fmt(S.Tmax)}K/Tc=${fmt(S.Tmin)}K) = ${$('rCarnot').textContent}`;
+    const modoTxt = { isotermico: 'isotérmico', isobarico: 'isobárico', isocorico: 'isocórico', adiabatico: 'adiabático', livre: 'livre' }[S.mode];
     $('lModo').textContent = modoTxt;
     $('lVol').textContent = (S.mode === 'isocorico' ? S.Vlock : S.V_L).toFixed(2) + ' L';
     $('hud').textContent = `Gás ideal monoatômico · quase-estático · modo ${modoTxt} · P=${fmt(P)} Pa V=${fmt(V * 1e3)} L T=${fmt(T)} K`;
-    drawGraph(P, V);
+    drawGraph(P, V, T);
     return st;
   } catch (e) { alert.innerHTML = `<div class="err">${e.message}</div>`; return null; }
 }
 
-function drawGraph(Pnow, Vnow) {
+function drawGraph(Pnow, Vnow, Tnow) {
   const g = $('g'), x = g.getContext('2d');
   x.clearRect(0, 0, g.width, g.height);
   const H = S.hist.length ? S.hist : [{ V: Vnow, P: Pnow }];
@@ -141,6 +162,34 @@ function drawGraph(Pnow, Vnow) {
   const pad = { l: 52, r: 10, t: 10, b: 20 };
   const X = (vL) => pad.l + (vL - vMin) / (vMax - vMin) * (g.width - pad.l - pad.r);
   const Y = (p) => g.height - pad.b - (p / (pMax * 1.08)) * (g.height - pad.t - pad.b);
+  // --- curvas de referência: adiabática atual (P·V^γ = const) + isotérmica (T = T atual) ---
+  const Tref = Tnow ?? null;
+  try {
+    const Vref = Vnow, Pref = Pnow;
+    // adiabática por P = Pref·(Vref/V)^γ
+    x.beginPath();
+    for (let px = pad.l; px <= g.width - pad.r; px += 3) {
+      const vL = vMin + (px - pad.l) / (g.width - pad.l - pad.r) * (vMax - vMin);
+      const p = adiabP(Pref, Vref, vL * 1e-3, GAMMA);
+      const py = Y(Math.min(p, pMax * 1.08));
+      px === pad.l ? x.moveTo(px, py) : x.lineTo(px, py);
+    }
+    x.strokeStyle = '#5dffb0'; x.lineWidth = 1.5; x.stroke();
+    // isotérmica de referência P = nRT/V (tracejada)
+    if (Tref) {
+      x.beginPath(); x.setLineDash([5, 4]);
+      for (let px = pad.l; px <= g.width - pad.r; px += 3) {
+        const vL = vMin + (px - pad.l) / (g.width - pad.l - pad.r) * (vMax - vMin);
+        const p = S.n * C.R * Tref / (vL * 1e-3);
+        const py = Y(Math.min(p, pMax * 1.08));
+        px === pad.l ? x.moveTo(px, py) : x.lineTo(px, py);
+      }
+      x.strokeStyle = '#93a4cc'; x.lineWidth = 1.2; x.stroke(); x.setLineDash([]);
+    }
+    x.fillStyle = '#5dffb0'; x.font = '11px sans-serif';
+    x.fillText('— adiabática', pad.l + 4, 14);
+    x.fillStyle = '#93a4cc'; x.fillText('- - isotérmica (T atual)', pad.l + 92, 14);
+  } catch { /* referência é auxiliar; nunca quebra o gráfico */ }
   // área hachurada = W
   x.beginPath();
   H.forEach((p, i) => { const px = X(p.V * 1e3), py = Y(p.P); i === 0 ? x.moveTo(px, py) : x.lineTo(px, py); });
@@ -168,13 +217,17 @@ function syncUI() {
   $('oT').textContent = S.Tset.toFixed(0);
   $('oV').textContent = (S.mode === 'isocorico' ? S.Vlock : S.V_L).toFixed(2);
   sN.value = S.n; sT.value = S.Tset; sV.value = S.V_L;
-  sT.disabled = (S.mode === 'isobarico');       // T resolvida
+  sT.disabled = (S.mode === 'isobarico' || S.mode === 'adiabatico');       // T resolvida
   sV.disabled = (S.mode === 'isocorico');       // V travada
   calc();
 }
 
 // eventos
-sN.oninput = () => { S.n = +sN.value; syncUI(); };
+function resetAccumulators(reason) {
+  S.W = 0; S.U0 = null; S.hist = []; S.Tmax = null; S.Tmin = null;
+  if (reason) toast(reason);
+}
+sN.oninput = () => { S.n = +sN.value; resetAccumulators('n alterado: nova configuração inicial — W/Q zerados'); syncUI(); };
 sT.oninput = () => { S.Tset = +sT.value; syncUI(); };
 sV.oninput = () => { S.V_L = +sV.value; syncUI(); };
 function setMode(m, silent) {
@@ -182,6 +235,10 @@ function setMode(m, silent) {
   S.mode = m; sel.value = m;
   if (m === 'isobarico') S.Plock = cur ? cur.P : S.n * C.R * S.Tset / (S.V_L * 1e-3);
   if (m === 'isocorico') S.Vlock = S.V_L;
+  if (m === 'adiabatico' && cur) {
+    S.T0ad = cur.T; S.V0ad = cur.V * 1e3;
+    S.C0 = S.T0ad * Math.pow(S.V0ad * 1e-3, GAMMA - 1);
+  }
   if (!silent) toast('Modo: ' + m);
   syncUI();
 }
@@ -189,15 +246,16 @@ sel.onchange = () => setMode(sel.value, true);
 $('bIsoT').onclick = () => setMode('isotermico');
 $('bIsoP').onclick = () => setMode('isobarico');
 $('bIsoV').onclick = () => setMode('isocorico');
+$('bIsoA').onclick = () => setMode('adiabatico');
 $('bAquecer').onclick = () => {
-  if (S.mode === 'isobarico') { toast('No modo isobárico T é resolvida — troque de modo p/ aquecer'); return; }
+  if (S.mode === 'isobarico' || S.mode === 'adiabatico') { toast(S.mode === 'adiabatico' ? 'No modo adiabático T é resolvida (Q=0) — troque de modo p/ aquecer' : 'No modo isobárico T é resolvida — troque de modo p/ aquecer'); return; }
   S.Tset = Math.min(800, S.Tset + 20); syncUI();
 };
 $('bResfriar').onclick = () => {
-  if (S.mode === 'isobarico') { toast('No modo isobárico T é resolvida — troque de modo p/ resfriar'); return; }
+  if (S.mode === 'isobarico' || S.mode === 'adiabatico') { toast(S.mode === 'adiabatico' ? 'No modo adiabático T é resolvida (Q=0) — troque de modo p/ resfriar' : 'No modo isobárico T é resolvida — troque de modo p/ resfriar'); return; }
   S.Tset = Math.max(200, S.Tset - 20); syncUI();
 };
-$('bReset').onclick = () => { const st = resolve(); S.W = 0; S.U0 = Umono(st.n, st.T); S.hist = [{ V: st.V, P: st.P }]; S.prevV = st.V; S.prevP = st.P; calc(); toast('W/Q resetados'); };
+$('bReset').onclick = () => { const st = resolve(); S.W = 0; S.U0 = Umono(st.n, st.T); S.hist = [{ V: st.V, P: st.P }]; S.prevV = st.V; S.prevP = st.P; S.Tmax = st.T; S.Tmin = st.T; calc(); toast('W/Q resetados'); };
 $('bSave').onclick = () => { store.save('termodinamica', { mode: S.mode, n: S.n, Tset: S.Tset, V_L: S.V_L }); toast('Salvo (Modo Livre consegue carregar)'); };
 
 // arrastar pistão ao longo de X

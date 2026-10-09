@@ -36,7 +36,9 @@
   </section>
 </main>
 <div id="toast"></div>
+<button id="btnGraphs">Gráficos</button>
 <script src="../../js/core.js"></script>
+<script>(function(){if(!window.FIS){var d=document.createElement('div');d.className='err';d.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;max-width:92vw';d.textContent='ERRO: js/core.js não carregou — abra via servidor local ou verifique o caminho.';document.body.appendChild(d);}})();</script>
 <script>
 const { store } = window.FIS;
 const $ = (id) => document.getElementById(id);
@@ -67,6 +69,7 @@ $('bAdd').onclick=()=>{const m=store.load('_med')||[];m.push({n:$('mN').value||'
 $('bCsv').onclick=()=>{const m=store.load('_med')||[];const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['nome;valor;unidade\n'+m.map(r=>`${r.n};${r.v};${r.u}`).join('\n')],{type:'text/csv'}));a.download='medicoes.csv';a.click();};
 refresh();if(window.lucide)lucide.createIcons();
+(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();
 </script>
 </body>
 </html>

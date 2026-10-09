@@ -4,12 +4,11 @@
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Física 3D — Laboratório Virtual</title>
 <link rel="stylesheet" href="css/style.css"/>
-<script src="https://unpkg.com/lucide@0.469.0/dist/umd/"></script>
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <div id="top" class="glass">
-  <span class="logo">◉ FÍSICA·3D — LABORATÓRIO VIRTUAL</span>
+  <span class="logo"><i data-lucide="orbit" class="ic"></i> FÍSICA·3D — LABORATÓRIO VIRTUAL</span>
   <nav><span class="tb act">Hub</span><a class="tb" href="modulos/livre/index.html">Modo livre</a></nav>
 </div>
 <main class="hub">
@@ -29,6 +28,7 @@
     <b style="color:#fff">Como usar:</b> 1) abra um módulo · 2) arraste no 3D (botão esquerdo orbita, scroll = zoom, botão direito = pan) · 3) ajuste sliders · 4) leia fórmula + passo a passo · 5) confira o gráfico inferior. Detalhes de validade em <a href="docs/VALIDACAO.md">docs/VALIDACAO.md</a> (se abrir via file:// e o .md não renderizar, leia o arquivo no editor).
   </section>
 </main>
-<script>if(window.lucide)lucide.createIcons();</script>
+<button id="btnGraphs">Gráficos</button>
+<script>if(window.lucide)lucide.createIcons();(function(){var b=document.getElementById('btnGraphs'),p=document.getElementById('bottom');if(!b)return;if(!p){b.style.display='none';return;}b.addEventListener('click',function(){p.classList.toggle('hidden');});})();</script>
 </body>
 </html>
